@@ -1,0 +1,25 @@
+{
+  "label_to_id": {
+    "RSA": 0,
+    "Classical": 1,
+    "XOR": 2,
+    "Encoding": 3,
+    "Hash": 4,
+    "Lattice": 5,
+    "ECC": 6,
+    "AES": 7,
+    "Unknown": 8
+  },
+  "id_to_label": {
+    "0": "RSA",
+    "1": "Classical",
+    "2": "XOR",
+    "3": "Encoding",
+    "4": "Hash",
+    "5": "Lattice",
+    "6": "ECC",
+    "7": "AES",
+    "8": "Unknown"
+  },
+  "num_labels": 9
+}

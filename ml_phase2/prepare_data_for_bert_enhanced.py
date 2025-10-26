@@ -48,93 +48,66 @@ class BERTDataPreparator:
             for line_num, line in enumerate(f, 1):
                 try:
                     writeup = json.loads(line.strip())
-                    self.data.append(writeup)
+                    
+                    # Extraer información relevante
+                    text = self.extract_text_features(writeup)
+                    attack_type = writeup.get('attack_type', 'Unknown')
+                    
+                    # Mapear a ID de etiqueta
+                    label_id = self.label_to_id.get(attack_type, self.label_to_id['Unknown'])
+                    
+                    self.data.append({
+                        'text': text,
+                        'label': label_id,
+                        'attack_type': attack_type,
+                        'challenge_name': writeup.get('challenge_name', 'Unknown'),
+                        'team': writeup.get('team', 'Unknown')
+                    })
+                    
                 except json.JSONDecodeError as e:
-                    print(f"⚠️ Skipping invalid JSON at line {line_num}: {e}")
+                    print(f"⚠️ Error parsing line {line_num}: {e}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️ Error processing line {line_num}: {e}")
                     continue
         
         print(f"✅ Loaded {len(self.data)} writeups")
-        return len(self.data)
-
-    def prepare_text_features(self, writeup):
-        """Prepara las características de texto para BERT"""
-        # Combinar múltiples campos de texto
-        text_parts = []
+        return self.data
+    
+    def extract_text_features(self, writeup):
+        """Extrae características de texto relevantes para clasificación"""
+        features = []
         
-        # Nombre del challenge
-        if writeup.get('challenge_name'):
-            text_parts.append(f"Challenge: {writeup['challenge_name']}")
-        
-        # Descripción
-        if writeup.get('challenge_description'):
-            desc = writeup['challenge_description'][:500]  # Limitar longitud
-            text_parts.append(f"Description: {desc}")
+        # Descripción del challenge
+        if 'challenge_name' in writeup:
+            features.append(writeup['challenge_name'])
         
         # Contenido del writeup (primeras líneas)
-        if writeup.get('writeup'):
-            writeup_content = writeup['writeup'][:1000]  # Limitar longitud
-            text_parts.append(f"Writeup: {writeup_content}")
+        if 'writeup' in writeup:
+            writeup_text = writeup['writeup'][:1000]  # Primeros 1000 chars
+            features.append(writeup_text)
         
-        # Código de solución (si existe)
-        if writeup.get('solution_code'):
-            code = writeup['solution_code'][:500]  # Limitar longitud
-            text_parts.append(f"Solution: {code}")
+        # Código de solución (keywords importantes)
+        if 'solution_code' in writeup and writeup['solution_code']:
+            code = writeup['solution_code'][:500]  # Primeros 500 chars
+            features.append(code)
         
-        # Herramientas utilizadas
-        if writeup.get('tools_used'):
-            tools = ', '.join(writeup['tools_used'])
-            text_parts.append(f"Tools: {tools}")
-        
-        # Combinar todo el texto
-        combined_text = ' | '.join(text_parts)
-        
-        # Limpiar y normalizar
-        combined_text = combined_text.replace('\n', ' ').replace('\r', ' ')
-        combined_text = ' '.join(combined_text.split())  # Normalizar espacios
-        
-        return combined_text
+        return ' '.join(features)
 
     def prepare_bert_data(self):
         """Prepara los datos en formato BERT"""
         print("🔧 Preparing data for BERT training...")
         
         prepared_data = []
-        skipped = 0
         
-        for writeup in self.data:
-            attack_type = writeup.get('attack_type', 'Unknown')
-            
-            # Mapear tipo a ID
-            if attack_type not in self.label_to_id:
-                print(f"⚠️ Unknown attack type: {attack_type}, mapping to 'Unknown'")
-                attack_type = 'Unknown'
-            
-            label_id = self.label_to_id[attack_type]
-            
-            # Preparar texto
-            text = self.prepare_text_features(writeup)
-            
-            # Validar que el texto no esté vacío
-            if not text.strip():
-                skipped += 1
-                continue
-            
-            # Limitar longitud máxima (BERT tiene límite de tokens)
-            if len(text) > 4000:  # Aproximadamente 512 tokens
-                text = text[:4000] + "..."
-            
+        for item in self.data:
             prepared_data.append({
-                'text': text,
-                'label': label_id,
-                'attack_type': attack_type,
-                'challenge_name': writeup.get('challenge_name', 'Unknown'),
-                'team': writeup.get('team', 'Unknown'),
-                'difficulty': writeup.get('difficulty', 'unknown')
+                'text': item['text'],
+                'label': item['label'],
+                'attack_type': item['attack_type']
             })
         
-        print(f"✅ Prepared {len(prepared_data)} samples")
-        print(f"⚠️ Skipped {skipped} samples (empty text)")
-        
+        print(f"✅ Prepared {len(prepared_data)} samples for BERT")
         return prepared_data
 
     def split_data(self, prepared_data):

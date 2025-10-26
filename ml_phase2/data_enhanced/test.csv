@@ -1,0 +1,129 @@
+text,label
+"Caesar Cipher Basic # Caesar Cipher Challenge
+
+## Challenge
+Decrypt the Caesar cipher: ""WKLV LV D WHVW""
+
+## Solution
+Try all 26 possible shifts.
+
+```python
+def caesar_decrypt(text, shift):
+    result = """"
+    for char in text:
+        if char.isalpha():
+            base = ord('A') if char.isupper() else ord('a')
+            result += chr((ord(char) - base - shift) % 26 + base)
+        else:
+            result += char
+    return result
+
+ciphertext = ""WKLV LV D WHVW""
+for shift in range(26):
+    plaintext = caesar_decrypt(ciphertext, shift)
+    if ""flag"" in plaintext.lower():
+        print(f""Shift {shift}: {plaintext}"")
+``` def caesar_decrypt(text, shift):
+    result = """"
+    for char in text:
+        if char.isalpha():
+            base = ord('A') if char.isupper() else ord('a')
+            result += chr((ord(char) - base - shift) % 26 + base)
+        else:
+            result += char
+    return result
+
+ciphertext = ""WKLV LV D WHVW""
+for shift in range(26):
+    plaintext = caesar_decrypt(ciphertext, shift)
+    if ""flag"" in plaintext.lower():
+        print(f""Shift {shift}: {plaintext}"")",1
+"XOR Repeating Key # XOR Repeating Key
+
+## Challenge
+Text encrypted with repeating XOR key.
+
+## Solution
+Find key length using Hamming distance, then break each position.
+
+```python
+def hamming_distance(s1, s2):
+    return sum(bin(a ^ b).count('1') for a, b in zip(s1, s2))
+
+def find_key_length(ciphertext, max_len=20):
+    best_len = 1
+    best_score = float('inf')
+    
+    for length in range(2, max_len + 1):
+        chunks = [ciphertext[i:i+length] for i in range(0, len(ciphertext), length)]
+        if len(chunks) < 2:
+            continue
+        
+        distances = []
+        for i in range(len(chunks) - 1):
+            if len(chunks[i]) == len(chunks[i+1]):
+                distances.append(hamming_distance(chunks[i], chunks[i+1]) / length)
+        
+        if distances:
+            avg_distance = sum(distances) / len(distances)
+            if avg_distance < best_score:
+                best_score = avg_distance
+                best_len = length
+    
+    return best_len
+
+ciphertext = bytes.fromhex(""1a def hamming_distance(s1, s2):
+    return sum(bin(a ^ b).count('1') for a, b in zip(s1, s2))
+
+def find_key_length(ciphertext, max_len=20):
+    best_len = 1
+    best_score = float('inf')
+    
+    for length in range(2, max_len + 1):
+        chunks = [ciphertext[i:i+length] for i in range(0, len(ciphertext), length)]
+        if len(chunks) < 2:
+            continue
+        
+        distances = []
+        for i in range(len(chunks) - 1):
+            if len(chunks[i]) == len(chunks[i+1]):
+           ",2
+"RSA Small Exponent e=3 # RSA Small Exponent Attack (e=3)
+
+## Challenge Description
+We have an RSA encryption with a very small public exponent e=3. The ciphertext and modulus are given.
+
+## Analysis
+When e=3 and the plaintext m is small enough that m^3 < n, then:
+c ≡ m^3 (mod n) = m^3
+
+Since m^3 < n, we can simply compute the cube root of c to recover m.
+
+## Solution
+```python
+import gmpy2
+from Crypto.Util.number import long_to_bytes
+
+n = 0x9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+e = 3
+c = 0x1234567890abcdef1234567890abcdef1234567890abcdef
+
+# Take cube root
+m, exact = gmpy2.iroot(c, 3)
+if exact:
+    flag = long_to_bytes(m)
+    print(f""Flag: {flag.decode()}"")
+```
+
+## Key Learning
+Small exponents in RSA can be vulnerable when the plaintext is small relative to the modulus. import gmpy2
+from Crypto.Util.number import long_to_bytes
+
+n = 0x9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+e = 3
+c = 0x1234567890abcdef1234567890abcdef1234567890abcdef
+
+m, exact = gmpy2.iroot(c, 3)
+if exact:
+    flag = long_to_bytes(m)
+    print(f""Flag: {flag.decode()}"")",0
