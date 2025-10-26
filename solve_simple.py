@@ -11,24 +11,70 @@ import re
 from pathlib import Path
 
 def extract_flag_from_output(output):
-    """Extrae flags del output usando patrones comunes"""
+    """Extrae flags del output usando patrones comunes mejorados"""
     
-    # Patrones de flags comunes
+    # Patrones de flags comunes (mejorados)
     flag_patterns = [
-        r'flag\{[^}]+\}',
-        r'FLAG\{[^}]+\}',
-        r'ctf\{[^}]+\}',
-        r'CTF\{[^}]+\}',
-        r'\{[^}]*flag[^}]*\}',
-        r'[a-zA-Z0-9_]+\{[^}]+\}'
+        r'flag\{[^}]+\}',           # flag{...}
+        r'FLAG\{[^}]+\}',           # FLAG{...}
+        r'ctf\{[^}]+\}',            # ctf{...}
+        r'CTF\{[^}]+\}',            # CTF{...}
+        r'picoCTF\{[^}]+\}',        # picoCTF{...}
+        r'hackthebox\{[^}]+\}',     # hackthebox{...}
+        r'\{[^}]*flag[^}]*\}',      # {something_flag_something}
+        r'[a-zA-Z0-9_]+\{[^}]+\}',  # generic{...}
+        r'\b[0-9a-f]{32}\b',        # MD5 hash
+        r'\b[0-9a-f]{40}\b',        # SHA1 hash
+        r'\b[0-9a-f]{64}\b',        # SHA256 hash
     ]
     
     for pattern in flag_patterns:
         matches = re.findall(pattern, output, re.IGNORECASE)
         if matches:
-            return matches[0]
+            # Retornar el match más probable (el que contiene 'flag')
+            for match in matches:
+                if 'flag' in match.lower():
+                    return match
+            return matches[0]  # Si ninguno contiene 'flag', retornar el primero
     
     return None
+
+def decode_base64_recursive(text, max_depth=10):
+    """Decodifica Base64 recursivamente hasta encontrar flag o texto legible"""
+    import base64
+    import re
+    
+    if not text:
+        return None
+    
+    current = text.strip()
+    
+    for depth in range(max_depth):
+        try:
+            # Intentar decodificar Base64
+            decoded_bytes = base64.b64decode(current)
+            decoded = decoded_bytes.decode('utf-8', errors='ignore')
+            
+            print(f"  Layer {depth + 1}: {decoded[:50]}...")
+            
+            # ¿Encontramos flag?
+            if 'flag{' in decoded.lower():
+                print(f"  🎯 Found flag at layer {depth + 1}!")
+                return decoded
+            
+            # ¿Parece que hay más Base64 para decodificar?
+            if re.match(r'^[A-Za-z0-9+/=]+$', decoded.strip()) and len(decoded.strip()) > 10:
+                current = decoded.strip()
+            else:
+                # No parece más Base64, retornar lo que tenemos
+                return decoded
+            
+        except Exception as e:
+            print(f"  Layer {depth + 1}: Failed to decode - {e}")
+            # Si falla la decodificación, retornar lo que tenemos hasta ahora
+            return current if depth > 0 else None
+    
+    return current
 
 def solve_rsa_challenge(file_path):
     """Resuelve challenges RSA específicamente"""
@@ -79,7 +125,7 @@ def solve_rsa_challenge(file_path):
                 import gmpy2
                 from Crypto.Util.number import long_to_bytes
                 
-                # Intentar factorizar n
+                # Intentar factorizar n (método básico)
                 for i in range(2, min(1000000, int(n**0.5) + 1)):
                     if n % i == 0:
                         p = i
@@ -97,7 +143,39 @@ def solve_rsa_challenge(file_path):
                             return flag
                         break
             except Exception as e:
-                print(f"⚠️ Factorization failed: {e}")
+                print(f"⚠️ Simple factorization failed: {e}")
+            
+            # Intentar Fermat factorization (para p ≈ q)
+            print("🔧 Trying Fermat factorization...")
+            try:
+                import gmpy2
+                from Crypto.Util.number import long_to_bytes
+                
+                # Fermat factorization
+                a = gmpy2.isqrt(n) + 1
+                for _ in range(1000000):  # Límite de iteraciones
+                    b_squared = a * a - n
+                    b = gmpy2.isqrt(b_squared)
+                    
+                    if b * b == b_squared:
+                        p = a + b
+                        q = a - b
+                        if p * q == n and p > 1 and q > 1:
+                            print(f"🎯 Fermat found factors: p={p}, q={q}")
+                            
+                            phi = (p - 1) * (q - 1)
+                            d = gmpy2.invert(e, phi)
+                            m = pow(c, d, n)
+                            
+                            flag_bytes = long_to_bytes(m)
+                            flag = flag_bytes.decode('ascii', errors='ignore')
+                            if 'flag{' in flag.lower():
+                                print(f"✅ Found flag with Fermat: {flag}")
+                                return flag
+                            break
+                    a += 1
+            except Exception as e:
+                print(f"⚠️ Fermat factorization failed: {e}")
         
         # Buscar flag directamente en el output
         flag = extract_flag_from_output(output)
@@ -215,31 +293,23 @@ def solve_encoding_challenge(file_path):
         output = result.stdout + result.stderr
         print(f"📄 Challenge output:\n{output}")
         
-        # Buscar datos encoded
-        encoded_match = re.search(r'([A-Za-z0-9+/=]{20,})', output)
-        if encoded_match:
-            encoded_data = encoded_match.group(1)
-            print(f"🔤 Found encoded data: {encoded_data[:50]}...")
-            
-            # Intentar Base64 múltiples capas
-            print("🎯 Trying Base64 decoding...")
-            import base64
-            
-            current = encoded_data
-            for layer in range(10):  # Máximo 10 capas
+        # Buscar datos encoded (mejorado para evitar líneas de =)
+        encoded_matches = re.findall(r'([A-Za-z0-9+/]{10,}[A-Za-z0-9+/=]*)', output)
+        for encoded_data in encoded_matches:
+            # Filtrar líneas que son solo símbolos de separación
+            if len(set(encoded_data)) > 3:  # Debe tener variedad de caracteres
+                print(f"🔤 Found encoded data: {encoded_data[:50]}...")
+                
+                # Intentar Base64 múltiples capas
+                print("🎯 Trying Base64 decoding...")
                 try:
-                    decoded_bytes = base64.b64decode(current)
-                    decoded = decoded_bytes.decode('ascii')
-                    print(f"  Layer {layer + 1}: {decoded[:50]}...")
-                    
-                    if 'flag{' in decoded.lower():
-                        print(f"✅ Found flag at layer {layer + 1}: {decoded}")
-                        return decoded
-                    
-                    current = decoded
+                    result = decode_base64_recursive(encoded_data)
+                    if result and 'flag{' in result.lower():
+                        print(f"✅ Found flag with Base64 decoding: {result}")
+                        return result
                 except Exception as e:
-                    print(f"  Layer {layer + 1}: Failed to decode - {e}")
-                    break
+                    print(f"⚠️ Base64 recursive decoding failed: {e}")
+                    continue
         
         # Buscar flag directamente
         flag = extract_flag_from_output(output)

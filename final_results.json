@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "total_challenges": 5,
+    "successful": 5,
+    "failed": 0,
+    "success_rate": 100.0,
+    "total_time": 0.6479697227478027,
+    "average_time": 0.12959394454956055,
+    "timestamp": "2025-10-26T15:24:28.413033"
+  },
+  "challenge_types": {
+    "Classical": {
+      "total": 1,
+      "success": 1
+    },
+    "Encoding": {
+      "total": 1,
+      "success": 1
+    },
+    "Hash": {
+      "total": 1,
+      "success": 1
+    },
+    "Other": {
+      "total": 2,
+      "success": 2
+    }
+  },
+  "detailed_results": [
+    {
+      "challenge": "validation_challenges\\classical\\caesar.py",
+      "success": true,
+      "flag": "flag{caesar_cipher_is_easy_to_break}\n\nQrpelcg gb svaq gur synt",
+      "time_taken": 0.08966851234436035,
+      "error": null,
+      "timestamp": "2025-10-26T15:24:27.848250"
+    },
+    {
+      "challenge": "validation_challenges\\encoding\\base64_challenge.py",
+      "success": true,
+      "flag": "flag{base64_layers_decoded}",
+      "time_taken": 0.1000070571899414,
+      "error": null,
+      "timestamp": "2025-10-26T15:24:27.949150"
+    },
+    {
+      "challenge": "validation_challenges\\hash\\md5_crack.py",
+      "success": true,
+      "flag": "flag{password123}",
+      "time_taken": 0.1020057201385498,
+      "error": null,
+      "timestamp": "2025-10-26T15:24:28.052014"
+    },
+    {
+      "challenge": "validation_challenges\\rsa\\small_e.py",
+      "success": true,
+      "flag": "flag{small_exponent_attack_works}",
+      "time_taken": 0.28984689712524414,
+      "error": null,
+      "timestamp": "2025-10-26T15:24:28.342334"
+    },
+    {
+      "challenge": "validation_challenges\\xor\\single_byte.py",
+      "success": true,
+      "flag": "flag{single_byte_xor_cracked}",
+      "time_taken": 0.06644153594970703,
+      "error": null,
+      "timestamp": "2025-10-26T15:24:28.409322"
+    }
+  ]
+}

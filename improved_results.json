@@ -1,0 +1,67 @@
+{
+  "summary": {
+    "total_challenges": 5,
+    "successful": 0,
+    "failed": 5,
+    "success_rate": 0.0,
+    "total_time": 11.01458477973938,
+    "average_time": 2.202916955947876,
+    "timestamp": "2025-10-26T15:23:40.882167"
+  },
+  "challenge_types": {
+    "Classical": {
+      "total": 1,
+      "success": 0
+    },
+    "Encoding": {
+      "total": 1,
+      "success": 0
+    },
+    "Other": {
+      "total": 3,
+      "success": 0
+    }
+  },
+  "detailed_results": [
+    {
+      "challenge": "validation_challenges\\classical\\caesar.py",
+      "success": false,
+      "flag": null,
+      "time_taken": 10.698076248168945,
+      "error": null,
+      "timestamp": "2025-10-26T15:23:40.557788"
+    },
+    {
+      "challenge": "validation_challenges\\encoding\\base64_challenge.py",
+      "success": false,
+      "flag": null,
+      "time_taken": 0.0636742115020752,
+      "error": null,
+      "timestamp": "2025-10-26T15:23:40.622125"
+    },
+    {
+      "challenge": "validation_challenges\\hash\\md5_crack.py",
+      "success": false,
+      "flag": null,
+      "time_taken": 0.10346269607543945,
+      "error": null,
+      "timestamp": "2025-10-26T15:23:40.726186"
+    },
+    {
+      "challenge": "validation_challenges\\rsa\\small_e.py",
+      "success": false,
+      "flag": null,
+      "time_taken": 0.0738227367401123,
+      "error": null,
+      "timestamp": "2025-10-26T15:23:40.800674"
+    },
+    {
+      "challenge": "validation_challenges\\xor\\single_byte.py",
+      "success": false,
+      "flag": null,
+      "time_taken": 0.07554888725280762,
+      "error": null,
+      "timestamp": "2025-10-26T15:23:40.876873"
+    }
+  ]
+}
