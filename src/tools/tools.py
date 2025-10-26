@@ -1,6 +1,7 @@
 """
 Herramientas especializadas para resolver CTF Crypto
 Optimizadas para uso con Gemini function calling
+Incluye RAG (Retrieval-Augmented Generation) para contexto histórico
 """
 
 import re
@@ -9,6 +10,22 @@ import tempfile
 import os
 from typing import Dict, List, Any
 from langchain_core.tools import tool
+
+# Importar RAG tools
+try:
+    import sys
+    from pathlib import Path
+    rag_path = str(Path(__file__).parent.parent.parent / "rag")
+    if rag_path not in sys.path:
+        sys.path.insert(0, rag_path)
+    
+    from rag_agent_tools import retrieve_similar_writeups, analyze_with_context
+    RAG_TOOLS = [retrieve_similar_writeups, analyze_with_context]
+    RAG_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  RAG tools not available: {e}")
+    RAG_TOOLS = []
+    RAG_AVAILABLE = False
 
 # ============ HERRAMIENTA 1: ANALIZAR ARCHIVOS ============
 
@@ -1045,4 +1062,4 @@ ALL_TOOLS = [
     execute_sage,
     factorize_number,
     decode_text
-] + EXTRA_TOOLS + RSA_TOOLS
+] + EXTRA_TOOLS + RSA_TOOLS + RAG_TOOLS

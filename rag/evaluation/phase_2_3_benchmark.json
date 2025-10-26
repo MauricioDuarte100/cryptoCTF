@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-10-26 10:53:42",
+  "challenges": [
+    {
+      "name": "RSA e=3",
+      "type": "RSA",
+      "success": true,
+      "predicted_type": "RSA",
+      "method": "heuristic",
+      "confidence": 0.8,
+      "time": 42.36177086830139,
+      "rag_patterns": 2,
+      "rag_used": true
+    },
+    {
+      "name": "Caesar ROT13",
+      "type": "Classical",
+      "success": true,
+      "predicted_type": "Classical",
+      "method": "heuristic",
+      "confidence": 0.6,
+      "time": 0.30142712593078613,
+      "rag_patterns": 3,
+      "rag_used": true
+    },
+    {
+      "name": "XOR Single-Byte",
+      "type": "XOR",
+      "success": true,
+      "predicted_type": "XOR",
+      "method": "heuristic",
+      "confidence": 0.7,
+      "time": 0.31798815727233887,
+      "rag_patterns": 3,
+      "rag_used": true
+    },
+    {
+      "name": "Base64 Encoding",
+      "type": "Encoding",
+      "success": true,
+      "predicted_type": "Encoding",
+      "method": "heuristic",
+      "confidence": 1.0,
+      "time": 0.39635729789733887,
+      "rag_patterns": 2,
+      "rag_used": true
+    },
+    {
+      "name": "Hash Challenge",
+      "type": "Hash",
+      "success": true,
+      "predicted_type": "Hash",
+      "method": "heuristic",
+      "confidence": 0.6,
+      "time": 0.3179173469543457,
+      "rag_patterns": 3,
+      "rag_used": true
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "successful": 5,
+    "failed": 0,
+    "success_rate": 100.0,
+    "avg_time": 8.739092159271241,
+    "rag_usage": 1.0,
+    "avg_patterns_per_challenge": 2.6,
+    "by_type": {
+      "RSA": {
+        "success_rate": 100.0
+      },
+      "Classical": {
+        "success_rate": 100.0
+      },
+      "XOR": {
+        "success_rate": 100.0
+      },
+      "Encoding": {
+        "success_rate": 100.0
+      },
+      "Hash": {
+        "success_rate": 100.0
+      }
+    }
+  }
+}

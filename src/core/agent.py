@@ -15,7 +15,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..tools.tools import ALL_TOOLS
 from .prompts import MASTER_SYSTEM_PROMPT
-from ..prompts_v2 import SYSTEM_PROMPT_V2, SEQUENTIAL_ATTACK_PROMPT, get_optimized_prompt
+from ..prompts_v2 import SYSTEM_PROMPT_RAG_V4, SYSTEM_PROMPT_V2, SEQUENTIAL_ATTACK_PROMPT, get_optimized_prompt, RAG_RETRIEVAL_PROMPT
 from ..config.config import config
 from ..database.database import get_database
 
@@ -76,6 +76,11 @@ def agent_node(state: CTFAgentState) -> dict:
         # Usar prompts v2 optimizados
         optimized_prompt = get_optimized_prompt()
         
+        # Preparar contenido del challenge para RAG
+        challenge_content = f"{state['challenge_description']}\n\n"
+        for file in state['files']:
+            challenge_content += f"File: {file['name']}\n{file.get('content', '')}\n\n"
+        
         initial_message = HumanMessage(
             content=f"""{optimized_prompt}
 
@@ -92,7 +97,12 @@ Conexión Netcat: {state['nc_host']}:{state['nc_port'] if state['nc_port'] else 
 
 ---
 
-Comienza con PASO 1: analyze_files() usando los archivos proporcionados.
+PASO 0 (NUEVO): Primero llama retrieve_similar_writeups() con el contenido del challenge para obtener contexto histórico.
+
+PASO 1: Luego analyze_files() usando los archivos proporcionados.
+
+Challenge content for RAG:
+{challenge_content[:500]}...
 """
         )
         
