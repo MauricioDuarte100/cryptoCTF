@@ -6,6 +6,9 @@ Gestiona el flujo completo: Planner → Executor → Validator
 
 import time
 import json
+import psutil
+import os
+from datetime import datetime
 from typing import Dict, List, Any
 from dataclasses import dataclass
 import sys
@@ -17,6 +20,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.planner_agent import planner_agent
 from agents.executor_agent import executor_agent
 from agents.validator_agent import validator_agent
+
+# Import feedback system (with fallback if not available)
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from phase3.learning.feedback_collector import feedback_collector, ExecutionFeedback
+    FEEDBACK_AVAILABLE = True
+except ImportError:
+    FEEDBACK_AVAILABLE = False
+    feedback_collector = None
 
 @dataclass
 class MultiAgentResult:
@@ -131,6 +143,13 @@ class MultiAgentCoordinator:
                 }
             })
             
+            # Recolectar feedback para aprendizaje (Phase 3.0)
+            if FEEDBACK_AVAILABLE:
+                self._collect_execution_feedback(
+                    challenge_description, files, result, 
+                    execution_plan, execution_result, validation_result
+                )
+            
             return result
             
         except Exception as e:
@@ -233,6 +252,85 @@ class MultiAgentCoordinator:
                 'validator': total_executions   # Siempre se usa
             }
         }
+    
+    def _collect_execution_feedback(self, challenge_description: str, files: List[Dict[str, str]], 
+                                  result: MultiAgentResult, execution_plan: Dict[str, Any],
+                                  execution_result: Dict[str, Any], validation_result: Dict[str, Any]):
+        """
+        Recolecta feedback de la ejecución para el sistema de aprendizaje
+        """
+        try:
+            # Obtener métricas del sistema
+            process = psutil.Process(os.getpid())
+            memory_usage = process.memory_info().rss / 1024 / 1024  # MB
+            cpu_usage = process.cpu_percent()
+            
+            # Extraer información de estrategias
+            strategies_tried = []
+            failed_strategies = []
+            winning_strategy = None
+            
+            if 'strategies_attempted' in execution_result:
+                for strategy in execution_result['strategies_attempted']:
+                    strategy_info = {
+                        'name': strategy.get('name', 'unknown'),
+                        'priority': strategy.get('priority', 0),
+                        'attempts': strategy.get('attempts', 0),
+                        'success': strategy.get('success', False),
+                        'time': strategy.get('time', 0.0)
+                    }
+                    strategies_tried.append(strategy_info)
+                    
+                    if strategy.get('success', False):
+                        winning_strategy = strategy_info
+                    else:
+                        failed_strategies.append(strategy_info)
+            
+            # Crear feedback
+            feedback = ExecutionFeedback(
+                timestamp=datetime.now().isoformat(),
+                challenge_id=f"challenge_{int(time.time())}",
+                challenge_type=execution_plan.get('challenge_type', 'Unknown'),
+                challenge_name=challenge_description[:100],  # Truncar si es muy largo
+                success=result.success,
+                flag_found=result.flag if result.success else None,
+                total_time=result.total_time,
+                confidence=result.confidence,
+                quality_score=result.quality_score,
+                
+                # Agent performance
+                agents_used=result.agents_used,
+                planner_confidence=execution_plan.get('confidence', 0.0),
+                planner_strategies=len(execution_plan.get('strategies', [])),
+                planner_rag_patterns=execution_plan.get('rag_patterns_count', 0),
+                executor_attempts=execution_result.get('total_attempts', 0),
+                executor_success_strategy=winning_strategy.get('name') if winning_strategy else None,
+                validator_confidence=validation_result.get('confidence', 0.0),
+                
+                # Strategy details
+                strategies_tried=strategies_tried,
+                winning_strategy=winning_strategy,
+                failed_strategies=failed_strategies,
+                
+                # Error information
+                errors=execution_result.get('errors', []),
+                warnings=execution_result.get('warnings', []),
+                
+                # Context
+                rag_context=execution_plan.get('rag_context', []),
+                bert_prediction=execution_plan.get('challenge_type', 'Unknown'),
+                bert_confidence=execution_plan.get('bert_confidence', 0.0),
+                
+                # Performance metrics
+                memory_usage=memory_usage,
+                cpu_usage=cpu_usage
+            )
+            
+            # Enviar feedback al collector
+            feedback_collector.collect_feedback(feedback)
+            
+        except Exception as e:
+            print(f"⚠️ Warning: Could not collect feedback: {e}")
 
 # Instancia global
 multi_agent_coordinator = MultiAgentCoordinator()
