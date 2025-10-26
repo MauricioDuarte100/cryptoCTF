@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-10-25T21:46:19.541434",
+  "total_challenges": 3,
+  "successful_challenges": 0,
+  "success_rate": 0.0,
+  "total_benchmark_time": 3.48724365234375,
+  "avg_challenge_time": 1.1535321871439617,
+  "median_challenge_time": 1.1513667106628418,
+  "avg_steps": 0,
+  "avg_confidence": 0,
+  "by_type": {
+    "RSA": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        1.1694636344909668
+      ],
+      "success_rate": 0.0,
+      "avg_time": 1.1694636344909668,
+      "median_time": 1.1694636344909668
+    },
+    "Classical": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        1.1513667106628418
+      ],
+      "success_rate": 0.0,
+      "avg_time": 1.1513667106628418,
+      "median_time": 1.1513667106628418
+    },
+    "XOR": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        1.1397662162780762
+      ],
+      "success_rate": 0.0,
+      "avg_time": 1.1397662162780762,
+      "median_time": 1.1397662162780762
+    }
+  },
+  "by_difficulty": {
+    "Easy": {
+      "total": 3,
+      "successful": 0,
+      "success_rate": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "name": "RSA Basic (e=3)",
+      "type": "RSA",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{small_e_is_vulnerable}",
+      "confidence": 0.0,
+      "steps_used": 0,
+      "total_time": 1.1694636344909668,
+      "error": "Invalid argument provided to Gemini: 400 * GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[n_list].items: missing field.\n* GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[c_list].items: missing field.\n",
+      "tags": [
+        "rsa",
+        "hastad",
+        "small_e"
+      ]
+    },
+    {
+      "name": "Caesar Cipher (ROT13)",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{caesar_cipher_is_not_secure}",
+      "confidence": 0.0,
+      "steps_used": 0,
+      "total_time": 1.1513667106628418,
+      "error": "Invalid argument provided to Gemini: 400 * GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[n_list].items: missing field.\n* GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[c_list].items: missing field.\n",
+      "tags": [
+        "classical",
+        "caesar",
+        "rot13"
+      ]
+    },
+    {
+      "name": "XOR Single Byte",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{xor_is_not_secure}",
+      "confidence": 0.0,
+      "steps_used": 0,
+      "total_time": 1.1397662162780762,
+      "error": "Invalid argument provided to Gemini: 400 * GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[c_list].items: missing field.\n* GenerateContentRequest.tools[0].function_declarations[15].parameters.properties[n_list].items: missing field.\n",
+      "tags": [
+        "xor",
+        "single_byte"
+      ]
+    }
+  ]
+}

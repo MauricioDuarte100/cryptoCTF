@@ -1,5 +1,5 @@
 # XOR Single Byte Challenge
-encrypted_hex = "1c0e1b1a7b0a1d1c0f1a5f1d1c5f0a1d1c0f1a5f1c0e1b1a7d"
+encrypted_hex = "26646c60716c6f60756e6f60716c6f60756e6f60716c6f6073"
 
 print("Encrypted flag (hex):", encrypted_hex)
 print("Hint: Single byte XOR key was used")

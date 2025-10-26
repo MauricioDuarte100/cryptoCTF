@@ -1,0 +1,147 @@
+{
+  "timestamp": "2025-10-25T21:47:16.576401",
+  "total_challenges": 5,
+  "successful_challenges": 1,
+  "success_rate": 0.2,
+  "total_benchmark_time": 0.1144571304321289,
+  "avg_challenge_time": 0.01278982162475586,
+  "median_challenge_time": 0.010986804962158203,
+  "avg_steps": 3.8,
+  "avg_confidence": 0.6,
+  "by_type": {
+    "RSA": {
+      "total": 3,
+      "successful": 0,
+      "times": [
+        0.026622772216796875,
+        0.010986804962158203,
+        0.011928796768188477
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.01651279131571452,
+      "median_time": 0.011928796768188477
+    },
+    "Classical": {
+      "total": 1,
+      "successful": 1,
+      "times": [
+        0.005585193634033203
+      ],
+      "success_rate": 1.0,
+      "avg_time": 0.005585193634033203,
+      "median_time": 0.005585193634033203
+    },
+    "XOR": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        0.008825540542602539
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.008825540542602539,
+      "median_time": 0.008825540542602539
+    }
+  },
+  "by_difficulty": {
+    "Easy": {
+      "total": 3,
+      "successful": 1,
+      "success_rate": 0.3333333333333333
+    },
+    "Medium": {
+      "total": 2,
+      "successful": 0,
+      "success_rate": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "name": "RSA Basic (e=3)",
+      "type": "RSA",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{small_e_is_vulnerable}",
+      "confidence": 0.3,
+      "steps_used": 4,
+      "total_time": 0.026622772216796875,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "hastad",
+        "small_e"
+      ]
+    },
+    {
+      "name": "Caesar Cipher (ROT13)",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": true,
+      "flag_found": "flag{caesar_cipher_is_not_secure}",
+      "flag_correct": true,
+      "expected_flag": "flag{caesar_cipher_is_not_secure}",
+      "confidence": 0.9,
+      "steps_used": 3,
+      "total_time": 0.005585193634033203,
+      "error": null,
+      "tags": [
+        "classical",
+        "caesar",
+        "rot13"
+      ]
+    },
+    {
+      "name": "XOR Single Byte",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{xor_is_not_secure}",
+      "confidence": 0.7,
+      "steps_used": 4,
+      "total_time": 0.008825540542602539,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "xor",
+        "single_byte"
+      ]
+    },
+    {
+      "name": "RSA Wiener Attack",
+      "type": "RSA",
+      "difficulty": "Medium",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{wiener_attack_works}",
+      "confidence": 0.8,
+      "steps_used": 4,
+      "total_time": 0.010986804962158203,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "wiener",
+        "small_d"
+      ]
+    },
+    {
+      "name": "RSA Common Modulus",
+      "type": "RSA",
+      "difficulty": "Medium",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{common_modulus_attack}",
+      "confidence": 0.3,
+      "steps_used": 4,
+      "total_time": 0.011928796768188477,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "common_modulus"
+      ]
+    }
+  ]
+}

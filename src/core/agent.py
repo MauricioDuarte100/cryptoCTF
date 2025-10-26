@@ -16,6 +16,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from ..tools.tools import ALL_TOOLS
 from .prompts import MASTER_SYSTEM_PROMPT
 from ..config.config import config
+from ..database.database import get_database
 
 # Cargar variables de entorno
 load_dotenv()
@@ -221,10 +222,13 @@ def solve_ctf_challenge(
     files: list[dict] = None,
     nc_host: str = "",
     nc_port: int = 0,
-    max_steps: int = 15
+    max_steps: int = 15,
+    challenge_name: str = None,
+    expected_flag: str = None,
+    log_to_db: bool = True
 ) -> dict:
     """
-    Resuelve un desafío CTF crypto
+    Resuelve un desafío CTF crypto con logging automático
     
     Args:
         description: Descripción del desafío
@@ -232,10 +236,30 @@ def solve_ctf_challenge(
         nc_host: Host para netcat (opcional)
         nc_port: Puerto para netcat (opcional)
         max_steps: Máximo de iteraciones
+        challenge_name: Nombre del desafío (para DB)
+        expected_flag: Flag esperada (para validación)
+        log_to_db: Si registrar en base de datos
     
     Returns:
         Dict con resultado final
     """
+    import time
+    
+    start_time = time.time()
+    db = get_database() if log_to_db else None
+    challenge_id = None
+    attempt_id = None
+    
+    # Registrar desafío en DB
+    if db:
+        challenge_name = challenge_name or f"Challenge_{int(time.time())}"
+        challenge_id = db.log_challenge(
+            name=challenge_name,
+            description=description,
+            challenge_type="Unknown",  # Se actualizará después
+            files=files or [],
+            expected_flag=expected_flag
+        )
     
     # Crear agente
     agent = create_ctf_agent()
@@ -259,24 +283,72 @@ def solve_ctf_challenge(
     try:
         final_state = agent.invoke(initial_state)
         
-        return {
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        # Preparar resultado
+        result = {
             "success": bool(final_state.get("flag")),
             "flag": final_state.get("flag", ""),
             "challenge_type": final_state.get("challenge_type", "Unknown"),
             "confidence": final_state.get("confidence", 0.0),
             "solution_steps": final_state.get("solution_steps", []),
             "total_messages": len(final_state.get("messages", [])),
-            "steps_used": max_steps - final_state.get("remaining_steps", 0)
+            "steps_used": max_steps - final_state.get("remaining_steps", 0),
+            "total_time": total_time
         }
+        
+        # Validar flag si se proporcionó expected_flag
+        if expected_flag and result["flag"]:
+            result["flag_correct"] = result["flag"].lower() == expected_flag.lower()
+        
+        # Registrar intento en DB
+        if db and challenge_id:
+            attempt_id = db.log_attempt(
+                challenge_id=challenge_id,
+                success=result["success"],
+                flag_found=result["flag"],
+                confidence=result["confidence"],
+                steps_used=result["steps_used"],
+                total_time=total_time,
+                solution_steps=result["solution_steps"],
+                agent_version="2.1",
+                gemini_model=config.GEMINI_MODEL
+            )
+            
+            result["challenge_id"] = challenge_id
+            result["attempt_id"] = attempt_id
+        
+        return result
     
     except Exception as e:
-        return {
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        result = {
             "success": False,
             "error": str(e),
             "flag": "",
             "challenge_type": "Error",
-            "confidence": 0.0
+            "confidence": 0.0,
+            "total_time": total_time
         }
+        
+        # Registrar error en DB
+        if db and challenge_id:
+            attempt_id = db.log_attempt(
+                challenge_id=challenge_id,
+                success=False,
+                error_message=str(e),
+                total_time=total_time,
+                agent_version="2.1",
+                gemini_model=config.GEMINI_MODEL
+            )
+            
+            result["challenge_id"] = challenge_id
+            result["attempt_id"] = attempt_id
+        
+        return result
 
 # ============ CLI INTERFACE ============
 

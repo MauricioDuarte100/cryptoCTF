@@ -1,5 +1,5 @@
 # Caesar Cipher Challenge
-ciphertext = "syne{fdhvdu_flcure_vf_abg_frpher}"
+ciphertext = "synt{pnrfne_pvcure_vf_abg_frpher}"
 
 print("Encrypted flag:", ciphertext)
 print("Hint: Julius Caesar would be proud!")

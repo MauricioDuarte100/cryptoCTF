@@ -51,7 +51,10 @@ Ejemplos de uso:
     
     # Comando: benchmark
     benchmark_parser = subparsers.add_parser('benchmark', help='Ejecutar benchmark')
-    benchmark_parser.add_argument('--runs', type=int, default=3, help='Número de ejecuciones por test')
+    benchmark_parser.add_argument('--max-challenges', type=int, help='Máximo número de desafíos')
+    benchmark_parser.add_argument('--types', nargs='+', help='Filtrar por tipos de desafío')
+    benchmark_parser.add_argument('--difficulties', nargs='+', help='Filtrar por dificultades')
+    benchmark_parser.add_argument('--no-db', action='store_true', help='No registrar en base de datos')
     benchmark_parser.add_argument('--output', help='Archivo de salida')
     
     # Comando: setup
@@ -215,8 +218,25 @@ def run_benchmark(args):
     print("📊 Ejecutando benchmark...")
     
     try:
-        from utils.scripts.benchmark import run_full_benchmark
-        return 0 if run_full_benchmark() else 1
+        from src.benchmark.benchmark import CTFBenchmark
+        
+        benchmark = CTFBenchmark(db_logging=not args.no_db)
+        
+        report = benchmark.run_benchmark(
+            max_challenges=args.max_challenges,
+            challenge_types=args.types,
+            difficulties=args.difficulties
+        )
+        
+        # Guardar en archivo si se especifica
+        if args.output and report:
+            import json
+            with open(args.output, 'w') as f:
+                json.dump(report, f, indent=2)
+            print(f"💾 Reporte guardado en: {args.output}")
+        
+        return 0 if report and report.get('success_rate', 0) > 0 else 1
+        
     except ImportError as e:
         print(f"❌ Error importando benchmark: {e}")
         return 1
