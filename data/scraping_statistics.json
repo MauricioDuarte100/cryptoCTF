@@ -1,0 +1,30 @@
+{
+  "total_writeups": 20,
+  "by_team": {
+    "r3kapig": 1,
+    "kalmarunionenctf": 1,
+    "project-sekai-ctf": 2,
+    "justcatthefish": 2,
+    "cryptonite-mit": 1,
+    "bitskrieg": 6,
+    "sajjadium": 1,
+    "crypto-cat": 2,
+    "ashutosh1206": 1,
+    "p4-team": 3
+  },
+  "by_attack_type": {
+    "RSA": 5,
+    "Hash": 4,
+    "Unknown": 4,
+    "ECC": 1,
+    "Encoding": 1,
+    "XOR": 1,
+    "Classical": 3,
+    "AES": 1
+  },
+  "by_year": {
+    "2024": 20
+  },
+  "with_solution_code": 6,
+  "scraping_timestamp": "2025-10-26T16:01:54.424066"
+}

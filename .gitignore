@@ -234,3 +234,46 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Enhanced System v3.0 specific
+# Large ML models and data
+ml_phase2/trained_model_real/
+ml_phase2/data/
+real_writeups_train/
+data/models/
+data/embeddings/
+data/writeups/
+
+# ChromaDB databases
+rag/chromadb/
+*.chromadb
+
+# Frontend Next.js
+frontend_nextjs/.next/
+frontend_nextjs/out/
+frontend_nextjs/node_modules/
+frontend_nextjs/.env.local
+frontend_nextjs/.env.development.local
+frontend_nextjs/.env.test.local
+frontend_nextjs/.env.production.local
+
+# Test and benchmark reports
+*_report_*.json
+*_benchmark_*.json
+test_results/
+benchmark_results/
+
+# Temporary challenge files
+temp_challenge.*
+challenge_temp.*
+
+# Large datasets and archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+dataset/
+datasets/
+models/
+embeddings/
+writeups/

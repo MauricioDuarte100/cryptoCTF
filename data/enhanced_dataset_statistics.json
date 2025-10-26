@@ -1,0 +1,26 @@
+{
+  "total_writeups": 500,
+  "real_writeups": 20,
+  "synthetic_writeups": 480,
+  "by_attack_type": {
+    "RSA": 101,
+    "Hash": 100,
+    "Unknown": 4,
+    "ECC": 1,
+    "Encoding": 97,
+    "XOR": 97,
+    "Classical": 99,
+    "AES": 1
+  },
+  "by_difficulty": {
+    "unknown": 20,
+    "easy": 269,
+    "medium": 211
+  },
+  "by_year": {
+    "2024": 268,
+    "2023": 232
+  },
+  "with_solution_code": 486,
+  "generation_timestamp": "2025-10-26T16:04:14.850635"
+}
