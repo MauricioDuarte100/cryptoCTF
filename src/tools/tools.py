@@ -59,8 +59,8 @@ def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
             except:
                 result["variables"][var_name.lower()] = var_value
         
-        # Patrón 3: Variables p, q, d (factores RSA)
-        var_pattern3 = r'\b([pqd])\s*=\s*(\d+)'
+        # Patrón 3: Variables p, q, d, m, c (factores RSA y mensaje)
+        var_pattern3 = r'\b([pqdmc])\s*=\s*(\d+)'
         matches3 = re.findall(var_pattern3, content)
         for var_name, var_value in matches3:
             try:
@@ -76,6 +76,30 @@ def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
             if var1 in result["variables"] and var2 in result["variables"]:
                 try:
                     result["variables"][var_name] = result["variables"][var1] * result["variables"][var2]
+                except:
+                    pass
+        
+        # Patrón 5: Variables message (mensaje)
+        var_pattern5 = r'\b(message)\s*=\s*(\d+)'
+        matches5 = re.findall(var_pattern5, content)
+        for var_name, var_value in matches5:
+            try:
+                result["variables"][var_name] = int(var_value)
+            except:
+                result["variables"][var_name] = var_value
+        
+        # Patrón 6: Expresiones pow() (como c = pow(m, e, n))
+        pow_pattern = r'(\w+)\s*=\s*pow\s*\(\s*(\w+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)'
+        pow_matches = re.findall(pow_pattern, content)
+        for var_name, base, exp, mod in pow_matches:
+            # Si tenemos todos los valores, calcular
+            if base in result["variables"] and exp in result["variables"] and mod in result["variables"]:
+                try:
+                    result["variables"][var_name] = pow(
+                        result["variables"][base], 
+                        result["variables"][exp], 
+                        result["variables"][mod]
+                    )
                 except:
                     pass
         
@@ -115,6 +139,10 @@ def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
         # ECC
         if 'elliptic' in content_lower or 'ecc' in content_lower:
             result["crypto_indicators"].append("ECC")
+        
+        # Encoding (Base64, Hex, etc.)
+        if 'base64' in content_lower or 'b64encode' in content_lower or 'decode' in content_lower:
+            result["crypto_indicators"].append("Encoding")
         
         result["file_summary"].append({
             "name": name,
@@ -189,6 +217,14 @@ def classify_crypto(analysis: Dict[str, Any]) -> Dict[str, Any]:
     if any('sage' in imp.lower() or 'fpylll' in imp for imp in imports):
         lattice_score += 0.4
     scores["Lattice"] = min(lattice_score, 1.0)
+    
+    # Encoding detection
+    encoding_score = 0.0
+    if "Encoding" in indicators:
+        encoding_score += 0.7
+    if any('base64' in imp.lower() for imp in imports):
+        encoding_score += 0.3
+    scores["Encoding"] = min(encoding_score, 1.0)
     
     # Seleccionar el tipo con mayor score
     if not scores or max(scores.values()) < 0.3:

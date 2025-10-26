@@ -1,0 +1,99 @@
+{
+  "total": 6,
+  "successful": 0,
+  "failed": 6,
+  "by_type": {
+    "RSA": {
+      "total": 2,
+      "successful": 0
+    },
+    "Classical": {
+      "total": 1,
+      "successful": 0
+    },
+    "XOR": {
+      "total": 2,
+      "successful": 0
+    },
+    "Encoding": {
+      "total": 1,
+      "successful": 0
+    }
+  },
+  "details": [
+    {
+      "name": "RSA Small Factors",
+      "type": "RSA",
+      "difficulty": "Easy",
+      "success": false,
+      "time": 3.293051242828369,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{m=1234}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    },
+    {
+      "name": "RSA Fermat Attack",
+      "type": "RSA",
+      "difficulty": "Medium",
+      "success": false,
+      "time": 3.7559103965759277,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{m=12345}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    },
+    {
+      "name": "Caesar ROT13",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": false,
+      "time": 3.1807544231414795,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{caesar_is_classical_crypto}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    },
+    {
+      "name": "XOR Single-Byte Advanced",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "time": 4.098794460296631,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{xor_single_byte_advanced}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    },
+    {
+      "name": "Base64 Encoding",
+      "type": "Encoding",
+      "difficulty": "Easy",
+      "success": false,
+      "time": 4.409696340560913,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{base64_is_encoding_not_encryption}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    },
+    {
+      "name": "XOR Real Flag",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "time": 10.658268928527832,
+      "steps": 0,
+      "confidence": 0.0,
+      "flag_found": "",
+      "flag_expected": "flag{xor_single_byte_key}",
+      "error": "Invalid argument provided to Gemini: 400 Please ensure that function call turn comes immediately after a user turn or after a function response turn."
+    }
+  ],
+  "start_time": "2025-10-25T23:06:55.037690",
+  "end_time": "2025-10-25T23:07:24.437629"
+}
