@@ -1,0 +1,1342 @@
+# Fase 1: Agente CTF Crypto con Gemini API (100% GRATIS)
+
+Perfecto, vamos a usar **Gemini 2.5 Flash** que tiene un tier gratuito generoso y es ideal para tu caso. Te voy a dar todo el setup completo con prompts super detallados.
+
+## Por Qué Gemini es Perfecto Para CTF
+
+### Ventajas del Free Tier de Gemini (2025)
+- **Gemini 2.5 Flash**: 15 RPM (requests per minute), **1500 RPD** (requests per day)[1][2][3]
+- **Gemini 1.5 Flash**: 15 RPM, 1500 RPD - modelo rápido y eficiente[1]
+- **250,000 tokens por minuto** - suficiente para archivos crypto grandes[2]
+- **Context window**: 1 millón de tokens - puedes pasar archivos .sage completos[4]
+- **Function calling nativo** - integración perfecta con herramientas[5][6][7]
+- **Gratis comercialmente** - puedes usar en competencias[2]
+- **Sin tarjeta de crédito requerida**[4]
+
+Comparado con:
+- Claude: requiere pago después de créditos iniciales
+- GPT-4: $0.01/1K tokens (caro para CTF)
+- Gemini: **GRATIS** con límites generosos
+
+## Setup Completo - Paso a Paso
+
+### 1. Obtener API Key (Gratis)
+
+```bash
+# 1. Ve a: https://aistudio.google.com/apikey
+# 2. Click "Create API Key"
+# 3. Copia la key (empieza con AIza...)
+```
+
+### 2. Instalación
+
+```bash
+# Crear entorno virtual
+python -m venv ctf_env
+source ctf_env/bin/activate  # Linux/Mac
+# o
+ctf_env\Scripts\activate  # Windows
+
+# Instalar dependencias
+pip install --upgrade pip
+
+# LangGraph + Gemini
+pip install langgraph==0.2.45
+pip install langchain==0.3.7
+pip install langchain-google-genai==2.0.8  # Última versión con Gemini 2.5 Flash
+pip install langchain-core==0.3.21
+
+# Herramientas CTF
+pip install pwntools==4.13.1
+pip install pycryptodome==3.21.0
+
+# Utilidades
+pip install python-dotenv==1.0.1
+pip install google-generativeai==0.8.3
+
+# Opcional: ChromaDB para RAG (Fase 3)
+# pip install chromadb==0.5.23
+```
+
+### 3. Configurar API Key
+
+```bash
+# Crear archivo .env
+echo "GOOGLE_API_KEY=tu-api-key-aqui" > .env
+```
+
+## Código Completo del Agente con Gemini
+
+### Estructura del Proyecto
+
+```
+ctf-crypto-agent-gemini/
+│
+├── .env                      # API key
+├── agent.py                  # Agente principal (código abajo)
+├── tools.py                  # Herramientas CTF
+├── prompts.py                # System prompts detallados
+├── requirements.txt
+└── examples/
+    └── rsa_basic/
+        └── chall.py
+```
+
+### `prompts.py` - Prompts Super Detallados
+
+```python
+"""
+Prompts optimizados para Gemini 2.5 Flash en resolución de CTF Crypto
+"""
+
+MASTER_SYSTEM_PROMPT = """Eres CryptoSolver, un agente experto en resolver desafíos CTF de criptografía.
+
+Tu objetivo es analizar desafíos crypto, identificar vulnerabilidades, y ejecutar ataques automatizados para capturar la flag.
+
+## CAPACIDADES ESPECIALIZADAS
+
+Dominas estas áreas de criptografía:
+• RSA: Wiener Attack, Fermat Factorization, Common Modulus, Hastad's Broadcast, Boneh-Durfee
+• Cifrados Clásicos: Caesar, Vigenère, Substitution, Atbash, Rail Fence
+• XOR: Single-byte, Multi-byte, Key reuse attacks
+• AES/DES: ECB mode detection, Padding Oracle, Known plaintext
+• Lattice: LLL reduction, CVP/SVP problems
+• Hash: Length extension, Collision attacks
+
+## HERRAMIENTAS DISPONIBLES
+
+Tienes acceso a estas funciones especializadas:
+
+1. `analyze_files(files: list)` → dict
+   - Analiza archivos .py, .sage del desafío
+   - Extrae parámetros criptográficos automáticamente
+   - Detecta imports y algoritmos usados
+   - Identifica variables clave: n, e, c, p, q, g, etc.
+
+2. `classify_crypto(analysis: dict)` → dict
+   - Clasifica tipo de criptografía
+   - Retorna: {"type": "RSA", "confidence": 0.95}
+   - Detecta patrones específicos de cada algoritmo
+
+3. `connect_netcat(host: str, port: int)` → dict
+   - Conecta al servidor del desafío
+   - Captura banner y prompts
+   - Maneja reconexiones automáticas
+   - Retorna output completo
+
+4. `attack_rsa(n: str, e: str, c: str)` → dict
+   - Ejecuta batería completa de ataques RSA
+   - Usa RsaCtfTool internamente
+   - Retorna flag si tiene éxito
+   - Timeout: 60 segundos
+
+5. `attack_classical(ciphertext: str)` → dict
+   - Ataca cifrados clásicos
+   - Prueba Caesar (26 rotaciones)
+   - Prueba XOR single-byte (256 keys)
+   - Retorna flag si la encuentra
+
+6. `execute_sage(script: str)` → dict
+   - Ejecuta código SageMath
+   - Para lattice attacks, ECC, etc.
+   - Retorna output del script
+
+## METODOLOGÍA SISTEMÁTICA
+
+Sigue este proceso SIEMPRE:
+
+### PASO 1: RECONOCIMIENTO INICIAL
+```
+1.1 Analiza TODOS los archivos proporcionados
+    - Llama: analyze_files(files)
+    - Revisa: imports, variables, funciones
+    
+1.2 Si hay conexión netcat:
+    - Llama: connect_netcat(host, port)
+    - Captura: banner, prompts iniciales
+    
+1.3 Clasifica el tipo de crypto:
+    - Llama: classify_crypto(analysis)
+    - Obtén: tipo + confidence score
+```
+
+### PASO 2: EXTRACCIÓN DE PARÁMETROS
+```
+Para RSA:
+  ✓ Busca: n (modulus), e (exponent), c (ciphertext)
+  ✓ Verifica: tamaño de n (bits), valor de e
+  ✓ Extrae: literalmente de archivos, NO inventes
+
+Para Cifrados Clásicos:
+  ✓ Busca: texto cifrado (hex, base64, raw)
+  ✓ Identifica: formato y encoding
+  ✓ Extrae: longitud y distribución de caracteres
+
+Para Otros:
+  ✓ Lattice: matrices, vectores
+  ✓ AES: ciphertext, IV, modo
+  ✓ Hash: hash value, algoritmo usado
+```
+
+### PASO 3: SELECCIÓN DE ATAQUE
+```
+Basándote en clasificación, elige estrategia:
+
+Si es RSA:
+  1. Verifica tamaño de e:
+     - e pequeño (3, 5, 17) → Hastad's Attack
+     - e/φ(n) ratio vulnerable → Wiener's Attack
+  2. Verifica tamaño de n:
+     - n < 1024 bits → Fermat Factorization
+     - n compartido entre challenges → Common Modulus
+  3. Si nada obvio → attack_rsa() con modo ALL
+
+Si es Classical:
+  1. Analiza longitud:
+     - < 50 chars → probablemente Caesar
+     - > 100 chars → Vigenère o Substitution
+  2. Ejecuta: attack_classical(ciphertext)
+
+Si es Lattice/Avanzado:
+  1. Busca writeups similares (si tienes RAG)
+  2. Genera script SageMath personalizado
+  3. Ejecuta: execute_sage(script)
+```
+
+### PASO 4: EJECUCIÓN Y VALIDACIÓN
+```
+4.1 Ejecuta herramienta seleccionada
+4.2 Captura resultado completo
+4.3 Busca flag con regex: flag\{[^}]+\}
+4.4 Si falla:
+    - Analiza error
+    - Ajusta parámetros
+    - Prueba siguiente ataque
+4.5 Si éxito:
+    - Valida formato de flag
+    - Documenta pasos tomados
+```
+
+## REGLAS CRÍTICAS
+
+❌ NUNCA:
+- Inventes parámetros que no están en archivos
+- Asumas valores sin verificar
+- Llames la misma herramienta 2+ veces sin cambiar parámetros
+- Declares éxito sin validar formato flag{...}
+- Continúes más de 10 iteraciones (anti-loop)
+
+✅ SIEMPRE:
+- Extrae parámetros LITERALMENTE de archivos
+- Valida que parámetros son números válidos antes de atacar
+- Documenta cada paso en `solution_steps`
+- Actualiza `confidence` tras cada análisis
+- Verifica formato de flag antes de declarar éxito
+
+## FORMATO DE RESPUESTAS
+
+Cuando tomes decisiones, estructura tu razonamiento así:
+
+**Análisis:**
+- Archivos detectados: [lista]
+- Imports encontrados: [imports]
+- Variables extraídas: [variables]
+
+**Clasificación:**
+- Tipo de crypto: RSA
+- Confidence: 0.95
+- Razón: Detecté variables n, e, c típicas de RSA
+
+**Plan de Ataque:**
+1. [Primer ataque a intentar]
+2. [Backup si falla]
+3. [Última opción]
+
+**Ejecución:**
+- Herramienta: attack_rsa
+- Parámetros: {n: "123...", e: "65537", c: "456..."}
+- Resultado: [describir output]
+
+**Validación:**
+- Flag encontrada: flag{...}
+- Formato válido: ✓
+- Pasos de solución: [lista]
+
+## EJEMPLO COMPLETO DE FLUJO
+
+**Input del usuario:**
+```
+Desafío: "Basic RSA"
+Archivos: 
+  - chall.py:
+    n = 123456789012345...
+    e = 3
+    c = 987654321098765...
+Netcat: ctf.server:1337
+```
+
+**Tu proceso (paso a paso):**
+
+1. **Análisis Inicial**
+   ```
+   Llamando: analyze_files([{name: "chall.py", content: "..."}])
+   Resultado: {
+     "imports": [],
+     "variables": {"n": 123456..., "e": 3, "c": 987654...},
+     "crypto_indicators": ["RSA"]
+   }
+   ```
+
+2. **Conexión Netcat**
+   ```
+   Llamando: connect_netcat("ctf.server", 1337)
+   Resultado: {
+     "output": "Decrypt this message to get flag!\n",
+     "success": true
+   }
+   ```
+
+3. **Clasificación**
+   ```
+   Llamando: classify_crypto(analysis)
+   Resultado: {"type": "RSA", "confidence": 0.98}
+   
+   Razonamiento: 
+   - Variables n, e, c presentes
+   - e = 3 (muy pequeño) → vulnerable a Hastad's Attack
+   - Confidence alta porque patrón es obvio
+   ```
+
+4. **Ataque**
+   ```
+   Llamando: attack_rsa(
+     n="123456789012345...",
+     e="3",
+     c="987654321098765..."
+   )
+   
+   Resultado: {
+     "success": true,
+     "flag": "flag{small_e_is_vulnerable}",
+     "attack_used": "hastads_broadcast"
+   }
+   ```
+
+5. **Validación**
+   ```
+   Flag encontrada: "flag{small_e_is_vulnerable}"
+   Formato: ✓ Correcto (empieza con "flag{" y termina con "}")
+   
+   Solución completa:
+   1. Analicé chall.py y encontré RSA con n, e=3, c
+   2. Conecté a netcat y confirmé desafío de descifrado
+   3. Clasifiqué como RSA con confidence 0.98
+   4. Identifiqué e=3 como vulnerabilidad (Hastad's Attack)
+   5. Ejecuté attack_rsa que recuperó la flag exitosamente
+   ```
+
+**Output final:**
+```
+{
+  "flag": "flag{small_e_is_vulnerable}",
+  "challenge_type": "RSA",
+  "attack_used": "Hastad's Broadcast Attack",
+  "confidence": 0.98,
+  "solution_steps": [
+    "Analyzed chall.py: found RSA parameters n, e=3, c",
+    "Connected to netcat: received decryption challenge",
+    "Classified as RSA (confidence: 0.98)",
+    "Identified vulnerability: e=3 (Hastad's Attack applicable)",
+    "Executed attack_rsa with all parameters",
+    "Successfully recovered flag: flag{small_e_is_vulnerable}"
+  ]
+}
+```
+
+## OPTIMIZACIÓN PARA GEMINI
+
+Dado que usas Gemini 2.5 Flash:
+- Prioriza claridad sobre brevedad en tu razonamiento
+- Usa structured output cuando llames tools
+- Si un ataque tarda >30s, considera alternativa
+- Aprovecha el context window de 1M tokens para pasar archivos completos
+- Usa mode="auto" para function calling (Gemini decide cuándo llamar)
+
+Ahora procede a resolver el desafío que te proporcionaré. Recuerda seguir la metodología paso a paso.
+"""
+
+# Prompt para cuando el agente está bloqueado
+REFLECTION_PROMPT = """Has intentado {num_attempts} ataques sin éxito.
+
+Analiza qué ha fallado:
+1. ¿Extrajiste los parámetros correctamente?
+2. ¿El tipo de crypto clasificado es correcto?
+3. ¿Hay información que pasaste por alto?
+4. ¿Necesitas un enfoque diferente?
+
+Reflexiona y propón un nuevo plan de ataque.
+"""
+
+# Prompt para generar exploits personalizados
+EXPLOIT_GENERATION_PROMPT = """Basándote en:
+- Tipo de desafío: {challenge_type}
+- Parámetros: {parameters}
+- Writeups similares: {writeups}
+
+Genera un script Python/Sage que:
+1. Implemente el ataque específico
+2. Use los parámetros proporcionados
+3. Extraiga y formatee la flag
+4. Sea ejecutable directamente
+
+El script debe ser completo y funcional.
+"""
+```
+
+### `tools.py` - Implementación de Herramientas
+
+```python
+"""
+Herramientas especializadas para resolver CTF Crypto
+Optimizadas para uso con Gemini function calling
+"""
+
+import re
+import subprocess
+import tempfile
+import os
+from typing import Dict, List, Any
+from langchain_core.tools import tool
+
+# ============ HERRAMIENTA 1: ANALIZAR ARCHIVOS ============
+
+@tool
+def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
+    """
+    Analiza archivos de desafío CTF (.py, .sage, .txt) para extraer 
+    parámetros criptográficos, imports, y estructura.
+    
+    Args:
+        files: Lista de dicts con 'name' y 'content'
+        
+    Returns:
+        Dict con imports, variables, funciones, e indicadores crypto
+    """
+    result = {
+        "imports": [],
+        "variables": {},
+        "functions": [],
+        "crypto_indicators": [],
+        "file_summary": []
+    }
+    
+    for file in files:
+        name = file.get("name", "unknown")
+        content = file.get("content", "")
+        
+        # Detectar imports
+        imports = re.findall(r'^(?:from|import)\s+(\S+)', content, re.MULTILINE)
+        result["imports"].extend(imports)
+        
+        # Extraer variables numéricas grandes (RSA params, etc.)
+        # Soporta decimal y hex
+        var_pattern = r'(\w+)\s*=\s*(\d{10,}|0x[0-9a-fA-F]{10,})'
+        matches = re.findall(var_pattern, content)
+        for var_name, var_value in matches:
+            try:
+                # Convertir a int (soporta hex con 0x)
+                result["variables"][var_name] = int(var_value, 0)
+            except:
+                result["variables"][var_name] = var_value
+        
+        # Detectar funciones definidas
+        functions = re.findall(r'def\s+(\w+)\s*\(', content)
+        result["functions"].extend(functions)
+        
+        # Detectar indicadores de tipo de crypto
+        content_lower = content.lower()
+        
+        # RSA
+        if 'rsa' in content_lower or \
+           any(v in result["variables"] for v in ['n', 'e', 'c', 'p', 'q']):
+            result["crypto_indicators"].append("RSA")
+        
+        # AES/DES
+        if 'aes' in content_lower or 'des' in content_lower or \
+           'Crypto.Cipher.AES' in content:
+            result["crypto_indicators"].append("AES/DES")
+        
+        # Cifrados clásicos
+        if any(word in content_lower for word in ['caesar', 'rot', 'vigenere', 'substitution']):
+            result["crypto_indicators"].append("Classical")
+        
+        # XOR
+        if 'xor' in content_lower or '^' in content:
+            result["crypto_indicators"].append("XOR")
+        
+        # Hash
+        if any(word in content_lower for word in ['md5', 'sha', 'hash']):
+            result["crypto_indicators"].append("Hash")
+        
+        # Lattice
+        if any(word in content_lower for word in ['lattice', 'lll', 'matrix']):
+            result["crypto_indicators"].append("Lattice")
+        
+        # ECC
+        if 'elliptic' in content_lower or 'ecc' in content_lower:
+            result["crypto_indicators"].append("ECC")
+        
+        result["file_summary"].append({
+            "name": name,
+            "lines": len(content.split('\n')),
+            "size_bytes": len(content)
+        })
+    
+    return result
+
+# ============ HERRAMIENTA 2: CLASIFICAR CRYPTO ============
+
+@tool
+def classify_crypto(analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Clasifica el tipo de criptografía basándose en análisis de archivos.
+    
+    Args:
+        analysis: Resultado de analyze_files()
+        
+    Returns:
+        Dict con 'type' y 'confidence' (0.0 - 1.0)
+    """
+    indicators = analysis.get("crypto_indicators", [])
+    variables = analysis.get("variables", {})
+    imports = analysis.get("imports", [])
+    
+    # Sistema de scoring
+    scores = {}
+    
+    # RSA detection
+    rsa_score = 0.0
+    if "RSA" in indicators:
+        rsa_score += 0.3
+    if all(v in variables for v in ['n', 'e', 'c']):
+        rsa_score += 0.5
+    if 'Crypto.PublicKey.RSA' in imports:
+        rsa_score += 0.2
+    scores["RSA"] = min(rsa_score, 1.0)
+    
+    # AES/DES detection
+    aes_score = 0.0
+    if "AES/DES" in indicators:
+        aes_score += 0.5
+    if any('Crypto.Cipher' in imp for imp in imports):
+        aes_score += 0.4
+    scores["AES"] = min(aes_score, 1.0)
+    
+    # Classical cipher detection
+    classical_score = 0.0
+    if "Classical" in indicators:
+        classical_score += 0.6
+    if any(func in analysis.get("functions", []) for func in ['encrypt', 'decrypt', 'caesar', 'vigenere']):
+        classical_score += 0.3
+    scores["Classical"] = min(classical_score, 1.0)
+    
+    # XOR detection
+    xor_score = 0.0
+    if "XOR" in indicators:
+        xor_score += 0.7
+    scores["XOR"] = min(xor_score, 1.0)
+    
+    # Hash detection
+    hash_score = 0.0
+    if "Hash" in indicators:
+        hash_score += 0.6
+    scores["Hash"] = min(hash_score, 1.0)
+    
+    # Lattice detection
+    lattice_score = 0.0
+    if "Lattice" in indicators:
+        lattice_score += 0.5
+    if any('sage' in imp.lower() or 'fpylll' in imp for imp in imports):
+        lattice_score += 0.4
+    scores["Lattice"] = min(lattice_score, 1.0)
+    
+    # Seleccionar el tipo con mayor score
+    if not scores or max(scores.values()) < 0.3:
+        return {"type": "Unknown", "confidence": 0.1, "all_scores": scores}
+    
+    best_type = max(scores, key=scores.get)
+    confidence = scores[best_type]
+    
+    return {
+        "type": best_type,
+        "confidence": confidence,
+        "all_scores": scores
+    }
+
+# ============ HERRAMIENTA 3: CONECTAR NETCAT ============
+
+@tool
+def connect_netcat(host: str, port: int, timeout: int = 5) -> Dict[str, Any]:
+    """
+    Conecta a servidor netcat del desafío y captura output.
+    
+    Args:
+        host: Hostname o IP
+        port: Puerto
+        timeout: Timeout en segundos
+        
+    Returns:
+        Dict con 'success', 'output', 'error'
+    """
+    try:
+        from pwn import remote
+        import time
+        
+        conn = remote(host, port, timeout=timeout)
+        time.sleep(0.5)  # Esperar banner
+        
+        # Capturar todo el output disponible
+        output = conn.recvall(timeout=timeout).decode(errors='ignore')
+        conn.close()
+        
+        return {
+            "success": True,
+            "output": output,
+            "error": None
+        }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "output": "",
+            "error": str(e)
+        }
+
+# ============ HERRAMIENTA 4: ATACAR RSA ============
+
+@tool
+def attack_rsa(n: str, e: str, c: str = "", timeout: int = 60) -> Dict[str, Any]:
+    """
+    Ejecuta batería de ataques RSA usando RsaCtfTool.
+    
+    Args:
+        n: Módulo RSA (string decimal o hex)
+        e: Exponente público (string decimal)
+        c: Ciphertext (opcional, string decimal o hex)
+        timeout: Timeout en segundos
+        
+    Returns:
+        Dict con 'success', 'flag', 'output', 'attack_used'
+    """
+    try:
+        # Verificar que RsaCtfTool existe
+        rsactftool_path = "./RsaCtfTool/RsaCtfTool.py"
+        if not os.path.exists(rsactftool_path):
+            # Intentar path alternativo
+            rsactftool_path = "RsaCtfTool.py"
+            if not os.path.exists(rsactftool_path):
+                return {
+                    "success": False,
+                    "output": "RsaCtfTool not found. Please install: git clone https://github.com/RsaCtfTool/RsaCtfTool.git",
+                    "flag": None
+                }
+        
+        # Construir comando
+        cmd = ["python3", rsactftool_path, "-n", str(n), "-e", str(e)]
+        
+        if c:
+            cmd.extend(["--uncipher", str(c)])
+        
+        # Ejecutar con timeout
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        
+        output = result.stdout + result.stderr
+        
+        # Buscar flag en output
+        flag_match = re.search(r'flag\{[^}]+\}', output, re.IGNORECASE)
+        
+        # Detectar qué ataque funcionó
+        attack_used = "unknown"
+        if "wiener" in output.lower():
+            attack_used = "Wiener's Attack"
+        elif "fermat" in output.lower():
+            attack_used = "Fermat Factorization"
+        elif "hastad" in output.lower():
+            attack_used = "Hastad's Attack"
+        elif "boneh" in output.lower():
+            attack_used = "Boneh-Durfee Attack"
+        
+        return {
+            "success": flag_match is not None,
+            "flag": flag_match.group(0) if flag_match else None,
+            "output": output[:500],  # Limitar output
+            "attack_used": attack_used
+        }
+    
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "output": f"Timeout after {timeout}s",
+            "flag": None
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "output": str(e),
+            "flag": None
+        }
+
+# ============ HERRAMIENTA 5: ATACAR CIFRADOS CLÁSICOS ============
+
+@tool
+def attack_classical(ciphertext: str, max_attempts: int = 50) -> Dict[str, Any]:
+    """
+    Ataca cifrados clásicos (Caesar, XOR, etc.).
+    
+    Args:
+        ciphertext: Texto cifrado
+        max_attempts: Máximo de intentos
+        
+    Returns:
+        Dict con 'success', 'plaintext', 'cipher_type', 'key'
+    """
+    results = []
+    
+    # ATAQUE 1: Caesar / ROT-N
+    for shift in range(26):
+        plaintext = ""
+        for char in ciphertext:
+            if char.isalpha():
+                base = ord('A') if char.isupper() else ord('a')
+                plaintext += chr((ord(char) - base + shift) % 26 + base)
+            else:
+                plaintext += char
+        
+        # Buscar flag
+        if "flag{" in plaintext.lower():
+            return {
+                "success": True,
+                "plaintext": plaintext,
+                "cipher_type": "Caesar",
+                "key": shift
+            }
+        
+        results.append({"type": "caesar", "shift": shift, "preview": plaintext[:50]})
+    
+    # ATAQUE 2: XOR single-byte
+    try:
+        # Intentar interpretar como hex
+        if all(c in '0123456789abcdefABCDEF ' for c in ciphertext.replace(' ', '')):
+            ciphertext_bytes = bytes.fromhex(ciphertext.replace(' ', ''))
+        else:
+            ciphertext_bytes = ciphertext.encode()
+        
+        for key in range(256):
+            plaintext_bytes = bytes([b ^ key for b in ciphertext_bytes])
+            try:
+                plaintext = plaintext_bytes.decode('utf-8', errors='ignore')
+                if "flag{" in plaintext.lower():
+                    return {
+                        "success": True,
+                        "plaintext": plaintext,
+                        "cipher_type": "XOR single-byte",
+                        "key": key
+                    }
+                
+                if len(results) < max_attempts:
+                    results.append({"type": "xor", "key": key, "preview": plaintext[:50]})
+            except:
+                pass
+    except:
+        pass
+    
+    return {
+        "success": False,
+        "attempts": len(results),
+        "sample_results": results[:10]
+    }
+
+# ============ HERRAMIENTA 6: EJECUTAR SAGEMATH ============
+
+@tool
+def execute_sage(script: str, timeout: int = 60) -> Dict[str, Any]:
+    """
+    Ejecuta script de SageMath para ataques avanzados.
+    
+    Args:
+        script: Código SageMath completo
+        timeout: Timeout en segundos
+        
+    Returns:
+        Dict con 'success', 'output', 'error'
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.sage', delete=False) as f:
+        f.write(script)
+        temp_file = f.name
+    
+    try:
+        result = subprocess.run(
+            ["sage", temp_file],
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "error": result.stderr if result.returncode != 0 else None
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "output": "",
+            "error": f"Timeout after {timeout}s"
+        }
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "output": "",
+            "error": "SageMath not installed. Install with: sudo apt install sagemath"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "output": "",
+            "error": str(e)
+        }
+    finally:
+        if os.path.exists(temp_file):
+            os.unlink(temp_file)
+
+# Lista de todas las herramientas para bind al LLM
+ALL_TOOLS = [
+    analyze_files,
+    classify_crypto,
+    connect_netcat,
+    attack_rsa,
+    attack_classical,
+    execute_sage
+]
+```
+
+### `agent.py` - Agente Principal con LangGraph + Gemini
+
+```python
+"""
+Agente CTF Crypto usando Gemini 2.5 Flash + LangGraph
+100% GRATIS - Sin necesidad de Claude/OpenAI
+"""
+
+import os
+from typing import TypedDict, Annotated, Sequence
+from operator import add
+from dotenv import load_dotenv
+
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import ToolExecutor
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from tools import ALL_TOOLS
+from prompts import MASTER_SYSTEM_PROMPT
+
+# Cargar variables de entorno
+load_dotenv()
+
+# ============ DEFINIR ESTADO DEL AGENTE ============
+
+class CTFAgentState(TypedDict):
+    """Estado del agente CTF"""
+    messages: Annotated[Sequence[BaseMessage], add]
+    challenge_description: str
+    files: list[dict]
+    nc_host: str
+    nc_port: int
+    challenge_type: str
+    confidence: float
+    parameters_extracted: dict
+    flag: str
+    solution_steps: list[str]
+    remaining_steps: int
+
+# ============ CONFIGURAR GEMINI ============
+
+def create_gemini_model():
+    """Crea instancia de Gemini 2.5 Flash con tools"""
+    
+    # Verificar API key
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "GOOGLE_API_KEY not found! "
+            "Get your free key at: https://aistudio.google.com/apikey"
+        )
+    
+    # Crear modelo Gemini 2.5 Flash
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",  # Modelo gratis con 1500 RPD
+        temperature=0.1,  # Baja para consistencia en crypto
+        google_api_key=api_key,
+        convert_system_message_to_human=True,  # Gemini maneja system messages así
+    )
+    
+    # Bind tools al modelo
+    llm_with_tools = llm.bind_tools(ALL_TOOLS)
+    
+    return llm_with_tools
+
+# ============ NODOS DEL GRAFO ============
+
+def agent_node(state: CTFAgentState) -> dict:
+    """
+    Nodo principal: Gemini decide qué hacer
+    """
+    llm = create_gemini_model()
+    
+    # Si es la primera iteración, crear mensaje inicial
+    if not state["messages"]:
+        initial_message = HumanMessage(
+            content=f"""{MASTER_SYSTEM_PROMPT}
+
+---
+
+NUEVO DESAFÍO CTF:
+
+Descripción: {state['challenge_description']}
+
+Archivos proporcionados: {len(state['files'])} archivo(s)
+{chr(10).join(f"  - {f['name']}" for f in state['files'])}
+
+Conexión Netcat: {state['nc_host']}:{state['nc_port'] if state['nc_port'] else 'N/A'}
+
+---
+
+Procede con la Metodología Sistemática. Comienza con PASO 1: RECONOCIMIENTO INICIAL.
+"""
+        )
+        
+        messages = [initial_message]
+    else:
+        messages = state["messages"]
+    
+    # Gemini procesa y decide
+    response = llm.invoke(messages)
+    
+    # Decrementar steps restantes
+    remaining = state.get("remaining_steps", 15) - 1
+    
+    return {
+        "messages": [response],
+        "remaining_steps": remaining
+    }
+
+def tool_node(state: CTFAgentState) -> dict:
+    """
+    Nodo de ejecución de herramientas
+    """
+    tool_executor = ToolExecutor(ALL_TOOLS)
+    
+    last_message = state["messages"][-1]
+    
+    # Ejecutar todos los tool calls
+    tool_messages = []
+    new_steps = list(state.get("solution_steps", []))
+    
+    for tool_call in last_message.tool_calls:
+        # Ejecutar herramienta
+        tool_result = tool_executor.invoke(tool_call)
+        
+        # Crear mensaje de resultado
+        tool_messages.append(
+            ToolMessage(
+                content=str(tool_result),
+                tool_call_id=tool_call["id"]
+            )
+        )
+        
+        # Documentar paso
+        new_steps.append(f"Executed: {tool_call['name']} with args: {tool_call['args']}")
+        
+        # Actualizar estado según herramienta
+        if tool_call["name"] == "classify_crypto" and isinstance(tool_result, dict):
+            state["challenge_type"] = tool_result.get("type", "Unknown")
+            state["confidence"] = tool_result.get("confidence", 0.0)
+        
+        # Buscar flag en resultados
+        if isinstance(tool_result, dict) and "flag" in tool_result and tool_result["flag"]:
+            state["flag"] = tool_result["flag"]
+    
+    return {
+        "messages": tool_messages,
+        "solution_steps": new_steps
+    }
+
+def should_continue(state: CTFAgentState) -> str:
+    """
+    Decide si continuar iterando o terminar
+    """
+    last_message = state["messages"][-1]
+    
+    # Si encontramos la flag, terminar
+    if state.get("flag"):
+        return "end"
+    
+    # Si no quedan steps, terminar (anti-loop)
+    if state.get("remaining_steps", 0) <= 0:
+        return "end"
+    
+    # Si el último mensaje tiene tool calls, ejecutar tools
+    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        return "continue"
+    
+    # Si no hay tool calls, terminar
+    return "end"
+
+# ============ CONSTRUIR GRAFO ============
+
+def create_ctf_agent():
+    """Construye el grafo del agente"""
+    
+    workflow = StateGraph(CTFAgentState)
+    
+    # Añadir nodos
+    workflow.add_node("agent", agent_node)
+    workflow.add_node("tools", tool_node)
+    
+    # Definir flujo
+    workflow.set_entry_point("agent")
+    
+    workflow.add_conditional_edges(
+        "agent",
+        should_continue,
+        {
+            "continue": "tools",
+            "end": END
+        }
+    )
+    
+    workflow.add_edge("tools", "agent")
+    
+    # Compilar
+    app = workflow.compile()
+    
+    return app
+
+# ============ FUNCIÓN PRINCIPAL ============
+
+def solve_ctf(
+    description: str,
+    files: list[dict],
+    nc_host: str = "",
+    nc_port: int = 0,
+    max_steps: int = 15
+) -> dict:
+    """
+    Resuelve un desafío CTF usando Gemini
+    
+    Args:
+        description: Descripción del desafío
+        files: Lista de archivos [{name: str, content: str}]
+        nc_host: Host netcat (opcional)
+        nc_port: Puerto netcat (opcional)
+        max_steps: Máximo de iteraciones
+        
+    Returns:
+        Dict con flag y solución
+    """
+    
+    print("🚀 Iniciando CryptoSolver con Gemini 2.5 Flash...")
+    print(f"📝 Desafío: {description}")
+    print(f"📂 Archivos: {len(files)}")
+    print(f"🔗 Netcat: {nc_host}:{nc_port if nc_port else 'N/A'}")
+    print(f"⚙️  Max steps: {max_steps}\n")
+    
+    # Crear agente
+    agent = create_ctf_agent()
+    
+    # Estado inicial
+    initial_state = {
+        "messages": [],
+        "challenge_description": description,
+        "files": files,
+        "nc_host": nc_host,
+        "nc_port": nc_port,
+        "challenge_type": "",
+        "confidence": 0.0,
+        "parameters_extracted": {},
+        "flag": "",
+        "solution_steps": [],
+        "remaining_steps": max_steps
+    }
+    
+    # Ejecutar agente
+    print("🤖 Gemini está analizando el desafío...\n")
+    
+    try:
+        final_state = agent.invoke(initial_state)
+        
+        print("\n" + "="*60)
+        print("✅ EJECUCIÓN COMPLETADA")
+        print("="*60)
+        
+        # Mostrar resultado
+        if final_state.get("flag"):
+            print(f"\n🎉 FLAG CAPTURADA: {final_state['flag']}")
+        else:
+            print("\n❌ Flag no encontrada")
+        
+        print(f"\n📊 Tipo identificado: {final_state.get('challenge_type', 'Unknown')}")
+        print(f"🎯 Confidence: {final_state.get('confidence', 0.0):.2f}")
+        
+        print(f"\n📝 Pasos de solución ({len(final_state.get('solution_steps', []))}):")
+        for i, step in enumerate(final_state.get("solution_steps", []), 1):
+            print(f"   {i}. {step}")
+        
+        return {
+            "flag": final_state.get("flag", "NOT FOUND"),
+            "challenge_type": final_state.get("challenge_type", "Unknown"),
+            "confidence": final_state.get("confidence", 0.0),
+            "solution_steps": final_state.get("solution_steps", []),
+            "success": bool(final_state.get("flag"))
+        }
+    
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        return {
+            "flag": "ERROR",
+            "error": str(e),
+            "success": False
+        }
+
+# ============ EJEMPLO DE USO ============
+
+if __name__ == "__main__":
+    # Ejemplo 1: RSA simple con e pequeño
+    result = solve_ctf(
+        description="Basic RSA challenge - small exponent vulnerability",
+        files=[{
+            "name": "chall.py",
+            "content": """
+from Crypto.Util.number import bytes_to_long
+
+# Flag
+flag = b"flag{testing_small_e_vulnerability}"
+m = bytes_to_long(flag)
+
+# RSA parameters
+n = 123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+e = 3
+c = pow(m, e, n)
+
+print(f"n = {n}")
+print(f"e = {e}")
+print(f"c = {c}")
+"""
+        }],
+        nc_host="",  # No hay netcat en este ejemplo
+        nc_port=0
+    )
+    
+    print("\n" + "="*60)
+    print(f"RESULTADO FINAL: {result}")
+    print("="*60)
+```
+
+### `requirements.txt`
+
+```txt
+# Gemini + LangGraph (GRATIS)
+langchain==0.3.7
+langchain-google-genai==2.0.8
+langchain-core==0.3.21
+langgraph==0.2.45
+google-generativeai==0.8.3
+
+# CTF Tools
+pwntools==4.13.1
+pycryptodome==3.21.0
+
+# Utilities
+python-dotenv==1.0.1
+```
+
+## Uso del Agente
+
+### 1. Instalación Completa
+
+```bash
+# Clonar/crear directorio del proyecto
+mkdir ctf-crypto-agent-gemini
+cd ctf-crypto-agent-gemini
+
+# Crear archivos (copiar código de arriba)
+# agent.py, tools.py, prompts.py, requirements.txt
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Clonar RsaCtfTool
+git clone https://github.com/RsaCtfTool/RsaCtfTool.git
+cd RsaCtfTool
+pip install -r requirements.txt
+cd ..
+
+# Configurar API key
+echo "GOOGLE_API_KEY=tu-api-key-aqui" > .env
+```
+
+### 2. Ejecutar el Agente
+
+```python
+# Desde Python interactivo o script
+from agent import solve_ctf
+
+# Ejemplo: RSA challenge
+result = solve_ctf(
+    description="RSA challenge from HackTheBox",
+    files=[{
+        "name": "challenge.py",
+        "content": open("challenge.py").read()
+    }],
+    nc_host="ctf.hackthebox.eu",
+    nc_port=1337
+)
+
+print(f"Flag: {result['flag']}")
+```
+
+### 3. CLI Simple (opcional)
+
+```python
+# cli.py
+import sys
+from agent import solve_ctf
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python cli.py <challenge_file.py>")
+        sys.exit(1)
+    
+    file_path = sys.argv[1]
+    
+    with open(file_path) as f:
+        content = f.read()
+    
+    result = solve_ctf(
+        description=f"Challenge from {file_path}",
+        files=[{"name": file_path, "content": content}]
+    )
+    
+    if result["success"]:
+        print(f"\n✅ SUCCESS: {result['flag']}")
+    else:
+        print(f"\n❌ FAILED")
+
+if __name__ == "__main__":
+    main()
+```
+
+Uso:
+```bash
+python cli.py examples/rsa_basic/chall.py
+```
+
+## Optimizaciones para Gemini Free Tier
+
+### Gestión de Límites
+
+```python
+# Añadir rate limiting simple
+import time
+from functools import wraps
+
+def rate_limit(calls_per_minute=15):
+    """Decorator para respetar límites de Gemini"""
+    min_interval = 60.0 / calls_per_minute
+    last_called = [0.0]
+    
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            elapsed = time.time() - last_called[0]
+            left_to_wait = min_interval - elapsed
+            if left_to_wait > 0:
+                time.sleep(left_to_wait)
+            ret = func(*args, **kwargs)
+            last_called[0] = time.time()
+            return ret
+        return wrapper
+    return decorator
+
+# Aplicar al nodo del agente
+@rate_limit(calls_per_minute=14)  # Bajo de 15 RPM para seguridad
+def agent_node_rate_limited(state):
+    return agent_node(state)
+```
+
+## Próximos Pasos
+
+Este setup de Fase 1 te da:
+- ✅ Agente funcional con Gemini (100% gratis)
+- ✅ Soporte para RSA, cifrados clásicos, XOR
+- ✅ Function calling nativo
+- ✅ LangGraph para control de flujo
+- ✅ Prompts super detallados
+- ✅ Sin límites de tarjeta de crédito
+
+**Para Fase 2-3** (cuando estés listo):
+- Añadir ChromaDB para RAG con writeups[8][2]
+- Fine-tune clasificador con BERT[9]
+- Expandir biblioteca de ataques
+- Multi-agent con CrewAI[10][11]
+
+
+
+[1](https://ai.google.dev/gemini-api/docs/pricing)
+[2](https://blog.laozhang.ai/api-guides/gemini-api-free-tier/)
+[3](https://blog.laozhang.ai/ai-tools/gemini-api-rate-limits-guide/)
+[4](https://www.cursor-ide.com/blog/gemini-2-5-pro-free-api-limits-guide)
+[5](https://codelabs.developers.google.com/codelabs/gemini-function-calling)
+[6](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling)
+[7](https://ai.google.dev/gemini-api/docs/function-calling)
+[8](https://airbyte.com/data-engineering-resources/chroma-db-vector-embeddings)
+[9](https://towardsdatascience.com/fine-tuning-bert-for-text-classification-a01f89b179fc/)
+[10](https://www.crewai.com)
+[11](https://github.com/crewAIInc/crewAI)
+[12](https://ai.google.dev/gemini-api/docs/rate-limits)
+[13](https://www.reddit.com/r/Bard/comments/1lj4wdp/gemini_free_tier_rate_limits_slashed_again/)
+[14](https://github.com/google-gemini/gemini-fullstack-langgraph-quickstart)
+[15](https://ai.google.dev/gemini-api/docs/langgraph-example)
+[16](https://support.google.com/gemini/thread/352320753/what-are-the-limits?hl=en)
+[17](https://www.youtube.com/watch?v=mVXrdvXplj0)
+[18](https://cloud.google.com/blog/products/ai-machine-learning/build-multimodal-agents-using-gemini-langchain-and-langgraph)
+[19](https://www.cometapi.com/what-are-the-limitations-of-gemini-usage-limits-across-all-tiers/)
+[20](https://geminibyexample.com/021-tool-use-function-calling/)
+[21](https://www.kaggle.com/code/marusagar/building-an-agent-with-langgraph-and-gemini-apis)
+[22](https://community.latenode.com/t/google-gemini-2-5-pro-is-back-on-the-free-api-tier-with-100-daily-requests/25859)
+[23](https://blog.searce.com/building-your-first-agentic-workflow-with-langgraph-and-gemini-llm-a-step-by-step-guide-c173c9dcdfe7)
+[24](https://support.google.com/gemini/thread/361968214/gemini-api-tier-1-throws-limit-to-freetier?hl=en)
+[25](https://python.langchain.com/docs/integrations/chat/google_generative_ai/)
+[26](https://pypi.org/project/langchain-google-genai/)
+[27](https://python.langchain.com/docs/integrations/llms/google_ai/)
+[28](https://www.youtube.com/watch?v=6OURT9WDm5Q)
+[29](https://www.andela.com/blog-posts/langchain-and-google-gemini-api-for-ai-apps-a-quickstart-guide)
+[30](https://github.com/google-gemini/gemini-cli/discussions/2436)
+[31](https://www.npmjs.com/package/@langchain/google-genai)
+[32](https://python.langchain.com/api_reference/google_genai/chat_models/langchain_google_genai.chat_models.ChatGoogleGenerativeAI.html)
+[33](https://gr-docs.aporia.com/examples/langchain-gemini)
+[34](https://www.youtube.com/watch?v=idZwopNzqNI)
+[35](https://github.com/langchain-ai/langgraph/issues/4130)
+[36](https://python.langchain.com/docs/integrations/providers/google/)
+[37](https://www.reddit.com/r/ChatGPTCoding/comments/1jrp1tj/a_simple_guide_to_setting_up_gemini_25_pro_free/)
+[38](https://www.kaggle.com/code/markishere/day-3-building-an-agent-with-langgraph)
+[39](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/develop/langchain)
+[40](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash)
+[41](https://www.philschmid.de/langgraph-gemini-2-5-react-agent)
+[42](https://developers.googleblog.com/en/start-building-with-gemini-25-flash/)

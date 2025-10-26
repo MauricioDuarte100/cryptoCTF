@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ctf-crypto-agent:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - ../examples:/app/examples:ro
+      - ../logs:/app/logs
+    restart: unless-stopped
+    
+  # Opcional: Redis para cache distribuido
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:

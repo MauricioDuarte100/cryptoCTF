@@ -1,0 +1,30 @@
+# CTF Crypto Agent - Gemini 2.5 Flash
+# 100% GRATIS - Sin necesidad de Claude/OpenAI
+
+# Core LangGraph + Gemini
+langgraph==0.2.45
+langchain==0.3.7
+langchain-google-genai==2.0.8
+langchain-core==0.3.21
+
+# Google Gemini API
+google-generativeai==0.8.3
+
+# CTF Tools
+pwntools==4.13.1
+pycryptodome==3.21.0
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.31.0
+
+# Optional: Para RAG en Fase 3
+# chromadb==0.5.23
+# sentence-transformers==2.2.2
+
+# Math libraries
+sympy>=1.12
+numpy>=1.24.0
+
+# Para factorización avanzada (opcional)
+# gmpy2==2.1.5
