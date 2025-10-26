@@ -58,15 +58,31 @@ def decode_base64_recursive(text, max_depth=10):
             print(f"  Layer {depth + 1}: {decoded[:50]}...")
             
             # ¿Encontramos flag?
-            if 'flag{' in decoded.lower():
+            if 'flag{' in decoded.lower() or 'ctf{' in decoded.lower():
                 print(f"  🎯 Found flag at layer {depth + 1}!")
                 return decoded
+            
+            # Intentar hex decode si parece hex
+            if re.match(r'^[0-9a-fA-F]+$', decoded.strip()) and len(decoded.strip()) % 2 == 0:
+                try:
+                    hex_decoded = bytes.fromhex(decoded.strip()).decode('utf-8', errors='ignore')
+                    print(f"  Layer {depth + 1} (hex): {hex_decoded[:50]}...")
+                    if 'flag{' in hex_decoded.lower() or 'ctf{' in hex_decoded.lower():
+                        print(f"  🎯 Found flag in hex at layer {depth + 1}!")
+                        return hex_decoded
+                    # Continuar con el resultado hex decodificado
+                    current = hex_decoded.strip()
+                    continue
+                except Exception as e:
+                    print(f"  Hex decode failed: {e}")
             
             # ¿Parece que hay más Base64 para decodificar?
             if re.match(r'^[A-Za-z0-9+/=]+$', decoded.strip()) and len(decoded.strip()) > 10:
                 current = decoded.strip()
             else:
-                # No parece más Base64, retornar lo que tenemos
+                # No parece más Base64, pero podría contener flag
+                if any(keyword in decoded.lower() for keyword in ['flag', 'ctf', 'picoctf']):
+                    return decoded
                 return decoded
             
         except Exception as e:
@@ -75,6 +91,102 @@ def decode_base64_recursive(text, max_depth=10):
             return current if depth > 0 else None
     
     return current
+
+def detect_aes_ecb(ciphertext_hex):
+    """Detecta si un ciphertext usa AES ECB mode"""
+    try:
+        if len(ciphertext_hex) % 32 != 0:  # AES blocks are 16 bytes = 32 hex chars
+            return False
+        
+        # Dividir en bloques de 16 bytes (32 hex chars)
+        blocks = [ciphertext_hex[i:i+32] for i in range(0, len(ciphertext_hex), 32)]
+        
+        # Si hay bloques repetidos, probablemente es ECB
+        return len(blocks) != len(set(blocks))
+    except:
+        return False
+
+def decrypt_aes_ecb(ciphertext_hex, key):
+    """Intenta descifrar AES ECB con una clave dada"""
+    try:
+        from Crypto.Cipher import AES
+        
+        ciphertext = bytes.fromhex(ciphertext_hex)
+        cipher = AES.new(key, AES.MODE_ECB)
+        plaintext = cipher.decrypt(ciphertext)
+        
+        # Remover padding PKCS7
+        padding_length = plaintext[-1]
+        if padding_length <= 16:
+            plaintext = plaintext[:-padding_length]
+        
+        return plaintext.decode('utf-8', errors='ignore')
+    except Exception as e:
+        print(f"  AES ECB decrypt error: {e}")
+        return None
+
+def solve_aes_challenge(file_path):
+    """Resuelve challenges AES/DES"""
+    
+    print("🔐 Detected AES/DES challenge, trying symmetric attacks...")
+    
+    try:
+        # Ejecutar el archivo
+        result = subprocess.run([sys.executable, file_path], 
+                              capture_output=True, text=True, timeout=30)
+        
+        output = result.stdout + result.stderr
+        print(f"📄 Challenge output:\n{output}")
+        
+        # Buscar ciphertext hex
+        hex_matches = re.findall(r'([0-9a-fA-F]{32,})', output)
+        
+        for hex_data in hex_matches:
+            print(f"🔢 Found hex data: {hex_data[:64]}...")
+            
+            # Intentar claves comunes para AES
+            common_keys = [
+                b'YELLOW SUBMARINE',  # Común en challenges
+                b'1234567890123456',
+                b'abcdefghijklmnop',
+                b'0123456789abcdef',
+                b'secretkey123456',
+                b'thisisasecretkey',
+                b'mysecretpassword'[:16],
+                b'password1234567'[:16]
+            ]
+            
+            print("🎯 Trying AES decryption with common keys...")
+            for key in common_keys:
+                if len(key) == 16:  # AES-128
+                    plaintext = decrypt_aes_ecb(hex_data, key)
+                    if plaintext and 'flag{' in plaintext.lower():
+                        print(f"✅ Found flag with AES ECB key {key}: {plaintext}")
+                        return plaintext
+            
+            # Detectar AES ECB para información
+            if detect_aes_ecb(hex_data):
+                print("📊 Note: This appears to be AES ECB mode (repeated blocks detected)")
+            
+            # Intentar como simple hex decode
+            try:
+                hex_decoded = bytes.fromhex(hex_data).decode('utf-8', errors='ignore')
+                if 'flag{' in hex_decoded.lower():
+                    print(f"✅ Found flag in hex decode: {hex_decoded}")
+                    return hex_decoded
+            except:
+                pass
+        
+        # Buscar flag directamente
+        flag = extract_flag_from_output(output)
+        if flag:
+            print(f"✅ Found flag in output: {flag}")
+            return flag
+            
+    except Exception as e:
+        print(f"❌ Error solving AES challenge: {e}")
+    
+    return None
 
 def solve_rsa_challenge(file_path):
     """Resuelve challenges RSA específicamente"""
@@ -304,7 +416,7 @@ def solve_encoding_challenge(file_path):
                 print("🎯 Trying Base64 decoding...")
                 try:
                     result = decode_base64_recursive(encoded_data)
-                    if result and 'flag{' in result.lower():
+                    if result and ('flag{' in result.lower() or 'ctf{' in result.lower()):
                         print(f"✅ Found flag with Base64 decoding: {result}")
                         return result
                 except Exception as e:
@@ -385,8 +497,12 @@ def detect_challenge_type(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read().lower()
         
-        # Detectar por palabras clave (orden importa)
-        if any(word in content for word in ['hashlib', 'md5', 'sha', 'hash']):
+        # Detectar por palabras clave (orden importa - más específico primero)
+        if any(word in content for word in ['caesar', 'shift', 'rot13', 'chr(', 'ord(']):
+            return 'classical'
+        elif any(word in content for word in ['aes', 'des', 'crypto.cipher', 'mode_ecb', 'mode_cbc', 'yellow submarine']):
+            return 'aes'
+        elif any(word in content for word in ['hashlib', 'md5', 'sha', 'hash']):
             return 'hash'
         elif any(word in content for word in ['rsa', 'pow(', 'getprime', 'crypto.util']):
             return 'rsa'
@@ -394,7 +510,7 @@ def detect_challenge_type(file_path):
             return 'xor'
         elif any(word in content for word in ['base64', 'b64encode', 'b64decode']):
             return 'encoding'
-        elif any(word in content for word in ['caesar', 'shift', 'cipher', 'chr(', 'ord(']):
+        elif any(word in content for word in ['cipher']):
             return 'classical'
         else:
             return 'unknown'
@@ -419,7 +535,8 @@ def solve_ctf_challenge(file_path):
         'classical': solve_classical_challenge,
         'xor': solve_xor_challenge,
         'encoding': solve_encoding_challenge,
-        'hash': solve_hash_challenge
+        'hash': solve_hash_challenge,
+        'aes': solve_aes_challenge
     }
     
     solver = solvers.get(challenge_type)
