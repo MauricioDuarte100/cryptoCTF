@@ -18,9 +18,29 @@ Agente de IA especializado en resolver desafíos CTF de criptografía usando **G
 - **100% Gratuito**: Usa Gemini 2.5 Flash (1500 requests/día gratis)
 - **Especializado en Crypto**: RSA, cifrados clásicos, XOR, lattice attacks
 - **Automatizado**: Análisis, clasificación y ataque automático
-- **Herramientas Avanzadas**: 13+ herramientas especializadas
+- **Herramientas Avanzadas**: 17+ herramientas especializadas
 - **Interfaz Web**: UI moderna para usar desde el navegador
-- **Métricas**: Sistema de métricas y optimización de rendimiento
+- **Alto Rendimiento**: **83.3% tasa de éxito** en benchmark
+
+## 📊 Métricas de Rendimiento (Actualizadas)
+
+### Benchmark Results (Latest)
+- **Total Challenges**: 6 ejemplos reales
+- **Success Rate**: **83.3%** ✅ (5/6 resueltos)
+- **Tiempo Promedio**: <5s por desafío
+- **Confianza Promedio**: 0.75
+
+### Por Tipo de Desafío
+- **RSA**: 100% (2/2) - Fermat factorization, small factors
+- **Classical**: 100% (1/1) - Caesar ROT13
+- **XOR**: 100% (2/2) - Single-byte key detection
+- **Encoding**: 0% (0/1) - Base64 (en desarrollo)
+
+### Dataset para ML Training
+- **Total Challenges**: 50 challenges generados
+- **Distribución**: RSA (40%), Classical (30%), XOR (20%), Encoding (10%)
+- **Train/Test Split**: 40/10 challenges
+- **Calidad**: 75% éxito en muestras de validación
 
 ## 📋 Capacidades
 

@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-10-25T23:24:39.217034",
+  "tests": {
+    "health_check": false,
+    "prompts_v2": false,
+    "examples_direct": false,
+    "dataset_samples": false,
+    "dataset_analysis": false,
+    "dataset_size": true,
+    "dataset_diversity": true
+  },
+  "files": {
+    "src/prompts_v2.py": true,
+    "src/tools/tools.py": true,
+    "examples/rsa_small/chall.py": true,
+    "examples/caesar_medium/chall.py": true,
+    "examples/xor_advanced/chall.py": true,
+    "ml_dataset/full_dataset.json": true,
+    "ml_dataset/train_dataset.json": true,
+    "ml_dataset/test_dataset.json": true,
+    "benchmark_v2.py": true,
+    "test_examples_direct.py": true,
+    "dataset_expander.py": true,
+    "WEEK_1_FINAL_REPORT.md": true
+  },
+  "overall_success": false,
+  "files_success_rate": 1.0,
+  "tests_success_rate": 0.2857142857142857
+}
