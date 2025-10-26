@@ -40,16 +40,44 @@ def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
         imports = re.findall(r'^(?:from|import)\s+(\S+)', content, re.MULTILINE)
         result["imports"].extend(imports)
         
-        # Extraer variables numéricas grandes (RSA params, etc.)
-        # Soporta decimal y hex
-        var_pattern = r'(\w+)\s*=\s*(\d{10,}|0x[0-9a-fA-F]{10,})'
-        matches = re.findall(var_pattern, content)
-        for var_name, var_value in matches:
+        # Extraer variables numéricas (RSA params, etc.)
+        # Patrón 1: Números grandes directos
+        var_pattern1 = r'(\w+)\s*=\s*(\d{10,}|0x[0-9a-fA-F]{10,})'
+        matches1 = re.findall(var_pattern1, content)
+        for var_name, var_value in matches1:
             try:
-                # Convertir a int (soporta hex con 0x)
                 result["variables"][var_name] = int(var_value, 0)
             except:
                 result["variables"][var_name] = var_value
+        
+        # Patrón 2: Variables RSA comunes (números más pequeños también)
+        var_pattern2 = r'(\b[nec]\b)\s*=\s*(\d+)'
+        matches2 = re.findall(var_pattern2, content, re.IGNORECASE)
+        for var_name, var_value in matches2:
+            try:
+                result["variables"][var_name.lower()] = int(var_value)
+            except:
+                result["variables"][var_name.lower()] = var_value
+        
+        # Patrón 3: Variables p, q, d (factores RSA)
+        var_pattern3 = r'\b([pqd])\s*=\s*(\d+)'
+        matches3 = re.findall(var_pattern3, content)
+        for var_name, var_value in matches3:
+            try:
+                result["variables"][var_name] = int(var_value)
+            except:
+                result["variables"][var_name] = var_value
+        
+        # Patrón 4: Expresiones calculadas (como n = p * q)
+        calc_pattern = r'(\w+)\s*=\s*(\w+)\s*\*\s*(\w+)'
+        calc_matches = re.findall(calc_pattern, content)
+        for var_name, var1, var2 in calc_matches:
+            # Si tenemos los valores de var1 y var2, calcular
+            if var1 in result["variables"] and var2 in result["variables"]:
+                try:
+                    result["variables"][var_name] = result["variables"][var1] * result["variables"][var2]
+                except:
+                    pass
         
         # Detectar funciones definidas
         functions = re.findall(r'def\s+(\w+)\s*\(', content)

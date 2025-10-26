@@ -7,7 +7,7 @@ import math
 import subprocess
 import tempfile
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from langchain_core.tools import tool
 from fractions import Fraction
 
@@ -187,7 +187,7 @@ def fermat_factorization(n: str, max_iterations: int = 10000) -> Dict[str, Any]:
 # ============ HASTAD'S BROADCAST ATTACK ============
 
 @tool
-def hastads_attack(n_list: list, e: int, c_list: list) -> Dict[str, Any]:
+def hastads_attack(n_list: List[str], e: int, c_list: List[str]) -> Dict[str, Any]:
     """
     Implementa Hastad's Broadcast Attack para e pequeño.
     

@@ -15,6 +15,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..tools.tools import ALL_TOOLS
 from .prompts import MASTER_SYSTEM_PROMPT
+from ..prompts_v2 import SYSTEM_PROMPT_V2, SEQUENTIAL_ATTACK_PROMPT, get_optimized_prompt
 from ..config.config import config
 from ..database.database import get_database
 
@@ -70,10 +71,13 @@ def agent_node(state: CTFAgentState) -> dict:
     """
     llm = create_gemini_model()
     
-    # Si es la primera iteración, crear mensaje inicial
+    # Si es la primera iteración, crear mensaje inicial con prompts optimizados
     if not state["messages"]:
+        # Usar prompts v2 optimizados
+        optimized_prompt = get_optimized_prompt()
+        
         initial_message = HumanMessage(
-            content=f"""{MASTER_SYSTEM_PROMPT}
+            content=f"""{optimized_prompt}
 
 ---
 
@@ -82,13 +86,13 @@ NUEVO DESAFÍO CTF:
 Descripción: {state['challenge_description']}
 
 Archivos proporcionados: {len(state['files'])} archivo(s)
-{chr(10).join(f"  - {f['name']}" for f in state['files'])}
+{chr(10).join(f"  - {f['name']}: {f.get('content', '')[:100]}..." for f in state['files'])}
 
 Conexión Netcat: {state['nc_host']}:{state['nc_port'] if state['nc_port'] else 'N/A'}
 
 ---
 
-Procede con la Metodología Sistemática. Comienza con PASO 1: RECONOCIMIENTO INICIAL.
+Comienza con PASO 1: analyze_files() usando los archivos proporcionados.
 """
         )
         
