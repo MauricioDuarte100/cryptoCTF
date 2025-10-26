@@ -1,0 +1,67 @@
+{
+  "timestamp": "2025-10-26 11:14:18",
+  "challenges": [
+    {
+      "name": "RSA e=3",
+      "type": "RSA",
+      "success": true,
+      "classification_correct": true,
+      "predicted_type": "RSA",
+      "time": 7.1403210163116455,
+      "confidence": 0.0,
+      "quality_score": 0.0,
+      "agents_used": 3,
+      "strategies_tried": 4,
+      "rag_patterns": 3,
+      "planner_confidence": 0.8
+    },
+    {
+      "name": "Caesar ROT13",
+      "type": "Classical",
+      "success": true,
+      "classification_correct": true,
+      "predicted_type": "Classical",
+      "time": 0.3164656162261963,
+      "confidence": 0.0,
+      "quality_score": 0.0,
+      "agents_used": 3,
+      "strategies_tried": 3,
+      "rag_patterns": 3,
+      "planner_confidence": 0.6
+    },
+    {
+      "name": "XOR Single-Byte",
+      "type": "XOR",
+      "success": true,
+      "classification_correct": true,
+      "predicted_type": "XOR",
+      "time": 0.31012439727783203,
+      "confidence": 0.0,
+      "quality_score": 0.0,
+      "agents_used": 3,
+      "strategies_tried": 3,
+      "rag_patterns": 3,
+      "planner_confidence": 0.7
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "successful": 3,
+    "failed": 0,
+    "success_rate": 100.0,
+    "avg_time": 2.588970343271891,
+    "avg_strategies_per_challenge": 3.3333333333333335,
+    "avg_rag_patterns_per_challenge": 3.0,
+    "by_type": {
+      "RSA": {
+        "success_rate": 100.0
+      },
+      "Classical": {
+        "success_rate": 100.0
+      },
+      "XOR": {
+        "success_rate": 100.0
+      }
+    }
+  }
+}
