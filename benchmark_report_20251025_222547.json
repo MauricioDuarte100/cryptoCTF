@@ -1,0 +1,228 @@
+{
+  "timestamp": "2025-10-25T22:25:47.783846",
+  "total_challenges": 9,
+  "successful_challenges": 1,
+  "success_rate": 0.1111111111111111,
+  "total_benchmark_time": 0.24544548988342285,
+  "avg_challenge_time": 0.02106157938639323,
+  "median_challenge_time": 0.009154796600341797,
+  "avg_steps": 3.4444444444444446,
+  "avg_confidence": 0.39444444444444443,
+  "by_type": {
+    "RSA": {
+      "total": 3,
+      "successful": 0,
+      "times": [
+        0.11014461517333984,
+        0.007162809371948242,
+        0.00868082046508789
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.04199608167012533,
+      "median_time": 0.00868082046508789
+    },
+    "Classical": {
+      "total": 3,
+      "successful": 1,
+      "times": [
+        0.005489349365234375,
+        0.009851932525634766,
+        0.020943641662597656
+      ],
+      "success_rate": 0.3333333333333333,
+      "avg_time": 0.012094974517822266,
+      "median_time": 0.009851932525634766
+    },
+    "XOR": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        0.009154796600341797
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.009154796600341797,
+      "median_time": 0.009154796600341797
+    },
+    "Encoding": {
+      "total": 2,
+      "successful": 0,
+      "times": [
+        0.009187936782836914,
+        0.008938312530517578
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.009063124656677246,
+      "median_time": 0.009063124656677246
+    }
+  },
+  "by_difficulty": {
+    "Easy": {
+      "total": 6,
+      "successful": 1,
+      "success_rate": 0.16666666666666666
+    },
+    "Medium": {
+      "total": 3,
+      "successful": 0,
+      "success_rate": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "name": "RSA Basic (e=3)",
+      "type": "RSA",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{small_e_is_vulnerable}",
+      "confidence": 0.3,
+      "steps_used": 4,
+      "total_time": 0.11014461517333984,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "hastad",
+        "small_e"
+      ]
+    },
+    {
+      "name": "Caesar Cipher (ROT13)",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": true,
+      "flag_found": "flag{caesar_cipher_is_not_secure}",
+      "flag_correct": true,
+      "expected_flag": "flag{caesar_cipher_is_not_secure}",
+      "confidence": 0.9,
+      "steps_used": 3,
+      "total_time": 0.005489349365234375,
+      "error": null,
+      "tags": [
+        "classical",
+        "caesar",
+        "rot13"
+      ]
+    },
+    {
+      "name": "XOR Single Byte",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{xor_is_not_secure}",
+      "confidence": 0.7,
+      "steps_used": 4,
+      "total_time": 0.009154796600341797,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "xor",
+        "single_byte"
+      ]
+    },
+    {
+      "name": "RSA Wiener Attack",
+      "type": "RSA",
+      "difficulty": "Medium",
+      "success": false,
+      "flag_found": null,
+      "flag_correct": false,
+      "expected_flag": "flag{wiener_attack_works}",
+      "confidence": 0.95,
+      "steps_used": 3,
+      "total_time": 0.007162809371948242,
+      "error": null,
+      "tags": [
+        "rsa",
+        "wiener",
+        "small_d"
+      ]
+    },
+    {
+      "name": "RSA Common Modulus",
+      "type": "RSA",
+      "difficulty": "Medium",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{common_modulus_attack}",
+      "confidence": 0.3,
+      "steps_used": 4,
+      "total_time": 0.00868082046508789,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "common_modulus"
+      ]
+    },
+    {
+      "name": "Base64 Decode",
+      "type": "Encoding",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{base64_is_not_encryption}",
+      "confidence": 0.1,
+      "steps_used": 3,
+      "total_time": 0.009187936782836914,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "encoding",
+        "base64"
+      ]
+    },
+    {
+      "name": "Hex Decode",
+      "type": "Encoding",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{hex_is_not_encryption}",
+      "confidence": 0.1,
+      "steps_used": 3,
+      "total_time": 0.008938312530517578,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "encoding",
+        "hex"
+      ]
+    },
+    {
+      "name": "ROT47 Cipher",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{contrarians_are_fun}",
+      "confidence": 0.1,
+      "steps_used": 3,
+      "total_time": 0.009851932525634766,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "classical",
+        "rot47"
+      ]
+    },
+    {
+      "name": "Vigenère Cipher",
+      "type": "Classical",
+      "difficulty": "Medium",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{vigenere_is_secure}",
+      "confidence": 0.1,
+      "steps_used": 4,
+      "total_time": 0.020943641662597656,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "classical",
+        "vigenere"
+      ]
+    }
+  ]
+}

@@ -217,88 +217,365 @@ def connect_netcat(host: str, port: int, timeout: int = 5) -> Dict[str, Any]:
 # ============ HERRAMIENTA 4: ATACAR RSA ============
 
 @tool
-def attack_rsa(n: str, e: str, c: str = "", timeout: int = 60) -> Dict[str, Any]:
+def attack_rsa(n: str, e: str, c: str = "", timeout: int = 120) -> Dict[str, Any]:
     """
-    Ejecuta batería de ataques RSA usando RsaCtfTool.
+    Ejecuta batería de ataques RSA con múltiples estrategias.
     
     Args:
         n: Módulo RSA (string decimal o hex)
         e: Exponente público (string decimal)
-        c: Ciphertext (opcional, string decimal o hex)
+        c: Ciphertext opcional (string decimal o hex)
         timeout: Timeout en segundos
         
     Returns:
-        Dict con 'success', 'flag', 'output', 'attack_used'
+        Dict con resultado del ataque
     """
     try:
-        # Verificar que RsaCtfTool existe
-        rsactftool_path = "./RsaCtfTool/RsaCtfTool.py"
-        if not os.path.exists(rsactftool_path):
-            # Intentar path alternativo
-            rsactftool_path = "RsaCtfTool.py"
-            if not os.path.exists(rsactftool_path):
+        # Convertir parámetros
+        n_int = int(n, 0)  # Soporta decimal y hex
+        e_int = int(e, 0)
+        c_int = int(c, 0) if c else None
+        
+        # Intentar ataques en orden de probabilidad
+        attacks_tried = []
+        
+        # 1. Ataque Fermat (factores cercanos)
+        if n_int < 10**20:  # Solo para números pequeños
+            attacks_tried.append("Fermat Factorization")
+            fermat_result = _fermat_attack(n_int, c_int, e_int)
+            if fermat_result["success"]:
+                return fermat_result
+        
+        # 2. Ataque de factores pequeños
+        attacks_tried.append("Small Factors")
+        small_factors_result = _small_factors_attack(n_int, c_int, e_int)
+        if small_factors_result["success"]:
+            return small_factors_result
+        
+        # 3. Si e es pequeño, intentar Hastad
+        if e_int <= 17 and c_int:
+            attacks_tried.append("Hastad's Attack (single)")
+            hastad_result = _hastad_single_attack(n_int, e_int, c_int)
+            if hastad_result["success"]:
+                return hastad_result
+        
+        # 4. Intentar RsaCtfTool como fallback
+        attacks_tried.append("RsaCtfTool")
+        rsactf_result = _try_rsactftool(n, e, c, timeout)
+        if rsactf_result["success"]:
+            return rsactf_result
+        
+        return {
+            "success": False,
+            "output": f"All attacks failed. Tried: {', '.join(attacks_tried)}",
+            "flag": None,
+            "attacks_tried": attacks_tried,
+            "debug_info": {
+                "n_bits": n_int.bit_length(),
+                "e_value": e_int,
+                "has_ciphertext": bool(c_int)
+            }
+        }
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "output": f"Error in attack_rsa: {str(e)}",
+            "flag": None,
+            "debug_info": {"n": n, "e": e, "c": c}
+        }
+
+def _fermat_attack(n: int, c: int = None, e: int = None) -> Dict[str, Any]:
+    """Ataque de factorización de Fermat"""
+    
+    if n % 2 == 0:
+        p, q = 2, n // 2
+    else:
+        # Usar integer square root para números grandes
+        def isqrt(n):
+            if n < 0:
+                raise ValueError("Square root not defined for negative numbers")
+            if n == 0:
+                return 0
+            x = n
+            y = (x + 1) // 2
+            while y < x:
+                x = y
+                y = (x + n // x) // 2
+            return x
+        
+        a = isqrt(n) + 1
+        for i in range(10000):  # Límite de iteraciones
+            b_squared = a * a - n
+            if b_squared >= 0:
+                b = isqrt(b_squared)
+                if b * b == b_squared:
+                    p = a + b
+                    q = a - b
+                    if p * q == n and p > 1 and q > 1:
+                        break
+            a += 1
+        else:
+            return {"success": False, "attack_type": "Fermat"}
+    
+    # Si tenemos ciphertext, descifrar
+    if c and e and p > 1 and q > 1:
+        try:
+            phi = (p - 1) * (q - 1)
+            d = pow(e, -1, phi)
+            m = pow(c, d, n)
+            
+            # Convertir a texto usando long_to_bytes
+            try:
+                if m > 0:
+                    # Intentar con Crypto.Util.number.long_to_bytes
+                    try:
+                        from Crypto.Util.number import long_to_bytes
+                        flag_bytes = long_to_bytes(m)
+                        flag_text = flag_bytes.decode('utf-8', errors='ignore')
+                    except:
+                        # Fallback a método manual
+                        flag_bytes = m.to_bytes((m.bit_length() + 7) // 8, 'big')
+                        flag_text = flag_bytes.decode('utf-8', errors='ignore')
+                    
+                    if 'flag{' in flag_text.lower():
+                        return {
+                            "success": True,
+                            "flag": flag_text,
+                            "attack_type": "Fermat Factorization",
+                            "factors": {"p": p, "q": q}
+                        }
+                    
+                    # Si no encontramos flag, devolver el mensaje descifrado para debug
+                    return {
+                        "success": True,
+                        "flag": flag_text if flag_text.isprintable() else f"Decrypted (hex): {m:x}",
+                        "attack_type": "Fermat Factorization",
+                        "factors": {"p": p, "q": q},
+                        "decrypted_message": m
+                    }
+            except Exception as ex:
+                # Devolver información de debug
                 return {
-                    "success": False,
-                    "output": "RsaCtfTool not found. Please install: git clone https://github.com/RsaCtfTool/RsaCtfTool.git",
-                    "flag": None
+                    "success": True,
+                    "flag": f"Decrypted number: {m}",
+                    "attack_type": "Fermat Factorization", 
+                    "factors": {"p": p, "q": q},
+                    "decrypted_message": m,
+                    "decode_error": str(ex)
                 }
+        except:
+            pass
+    
+    return {
+        "success": True if p > 1 and q > 1 else False,
+        "attack_type": "Fermat Factorization",
+        "factors": {"p": p, "q": q} if p > 1 and q > 1 else None,
+        "flag": None
+    }
+
+def _small_factors_attack(n: int, c: int = None, e: int = None) -> Dict[str, Any]:
+    """Ataque de factores pequeños"""
+    # Probar factores pequeños hasta 10000 (evitar overflow)
+    limit = min(10000, n // 2 + 1)
+    for i in range(2, limit):
+        if n % i == 0:
+            p = i
+            q = n // i
+            
+            # Si tenemos ciphertext, descifrar
+            if c and e:
+                try:
+                    phi = (p - 1) * (q - 1)
+                    d = pow(e, -1, phi)
+                    m = pow(c, d, n)
+                    
+                    # Convertir a texto usando long_to_bytes
+                    try:
+                        if m > 0:
+                            # Intentar con Crypto.Util.number.long_to_bytes
+                            try:
+                                from Crypto.Util.number import long_to_bytes
+                                flag_bytes = long_to_bytes(m)
+                                flag_text = flag_bytes.decode('utf-8', errors='ignore')
+                            except:
+                                # Fallback a método manual
+                                flag_bytes = m.to_bytes((m.bit_length() + 7) // 8, 'big')
+                                flag_text = flag_bytes.decode('utf-8', errors='ignore')
+                            
+                            if 'flag{' in flag_text.lower():
+                                return {
+                                    "success": True,
+                                    "flag": flag_text,
+                                    "attack_type": "Small Factors",
+                                    "factors": {"p": p, "q": q}
+                                }
+                            
+                            # Si no encontramos flag, devolver el mensaje descifrado
+                            return {
+                                "success": True,
+                                "flag": flag_text if flag_text.isprintable() else f"Decrypted (hex): {m:x}",
+                                "attack_type": "Small Factors",
+                                "factors": {"p": p, "q": q},
+                                "decrypted_message": m
+                            }
+                    except Exception as ex:
+                        return {
+                            "success": True,
+                            "flag": f"Decrypted number: {m}",
+                            "attack_type": "Small Factors",
+                            "factors": {"p": p, "q": q},
+                            "decrypted_message": m,
+                            "decode_error": str(ex)
+                        }
+                except:
+                    pass
+            
+            return {
+                "success": True,
+                "attack_type": "Small Factors",
+                "factors": {"p": p, "q": q},
+                "flag": None
+            }
+    
+    return {"success": False, "attack_type": "Small Factors"}
+
+def _hastad_single_attack(n: int, e: int, c: int) -> Dict[str, Any]:
+    """Ataque Hastad para un solo mensaje (e pequeño)"""
+    if e > 17:
+        return {"success": False, "attack_type": "Hastad"}
+    
+    # Intentar raíz e-ésima directa
+    def nth_root(x, n):
+        if x == 0:
+            return 0
         
-        # Construir comando
-        cmd = ["python3", rsactftool_path, "-n", str(n), "-e", str(e)]
+        # Método de Newton
+        root = x
+        for _ in range(100):  # Máximo 100 iteraciones
+            new_root = ((n - 1) * root + x // (root ** (n - 1))) // n
+            if abs(new_root - root) < 1:
+                break
+            root = new_root
         
-        if c:
-            cmd.extend(["--uncipher", str(c)])
+        # Verificar exactitud
+        if root ** n == x:
+            return root
+        elif (root + 1) ** n == x:
+            return root + 1
+        else:
+            return None
+    
+    m = nth_root(c, e)
+    
+    if m is not None:
+        try:
+            flag_bytes = m.to_bytes((m.bit_length() + 7) // 8, 'big')
+            flag_text = flag_bytes.decode('utf-8', errors='ignore')
+            
+            if 'flag{' in flag_text.lower():
+                return {
+                    "success": True,
+                    "flag": flag_text,
+                    "attack_type": "Hastad's Attack",
+                    "message": m
+                }
+        except:
+            pass
+    
+    return {"success": False, "attack_type": "Hastad"}
+
+def _try_rsactftool(n: str, e: str, c: str, timeout: int) -> Dict[str, Any]:
+    """Intenta usar RsaCtfTool como fallback"""
+    try:
+        # Crear script temporal que use RsaCtfTool correctamente
+        script_content = f'''
+import sys
+import os
+sys.path.insert(0, os.path.join(os.getcwd(), "RsaCtfTool", "src"))
+
+from RsaCtfTool.main import main
+import sys
+
+# Simular argumentos de línea de comandos
+sys.argv = ["main.py", "-n", "{n}", "-e", "{e}"]
+if "{c}":
+    sys.argv.extend(["--decrypt", "{c}"])
+
+try:
+    main()
+except SystemExit:
+    pass
+'''
         
-        # Ejecutar con timeout
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            temp_script = f.name
+        
+        print(f"🔧 Executing RsaCtfTool via temp script...")  # Debug
+        
         result = subprocess.run(
-            cmd,
+            ["python", temp_script],
             capture_output=True,
             text=True,
             timeout=timeout
         )
         
         output = result.stdout + result.stderr
+        print(f"🔧 RsaCtfTool output preview: {output[:100]}...")  # Debug
+        
+        # Limpiar archivo temporal
+        os.unlink(temp_script)
         
         # Buscar flag en output
         flag_match = re.search(r'flag\{[^}]+\}', output, re.IGNORECASE)
         
-        # Detectar qué ataque funcionó
-        attack_used = "unknown"
-        if "wiener" in output.lower():
-            attack_used = "Wiener's Attack"
-        elif "fermat" in output.lower():
-            attack_used = "Fermat Factorization"
-        elif "hastad" in output.lower():
-            attack_used = "Hastad's Attack"
-        elif "boneh" in output.lower():
-            attack_used = "Boneh-Durfee Attack"
+        # También buscar texto descifrado que pueda contener flag
+        if not flag_match:
+            # Buscar líneas que contengan "flag" (case insensitive)
+            lines = output.split('\n')
+            for line in lines:
+                if 'flag' in line.lower() and '{' in line and '}' in line:
+                    flag_match = re.search(r'flag\{[^}]*\}', line, re.IGNORECASE)
+                    if flag_match:
+                        break
+        
+        # Si no encontramos flag, buscar texto descifrado
+        decrypted_text = None
+        if "utf-8 :" in output:
+            try:
+                utf8_line = [line for line in output.split('\n') if 'utf-8 :' in line][0]
+                decrypted_text = utf8_line.split('utf-8 :')[1].strip()
+            except:
+                pass
         
         return {
             "success": flag_match is not None,
-            "flag": flag_match.group(0) if flag_match else None,
-            "output": output[:500],  # Limitar output
-            "attack_used": attack_used
+            "flag": flag_match.group(0) if flag_match else decrypted_text,
+            "attack_type": "RsaCtfTool",
+            "output": output[:300],
+            "return_code": result.returncode
         }
     
     except subprocess.TimeoutExpired:
         return {
             "success": False,
-            "output": f"Timeout after {timeout}s",
-            "flag": None
+            "attack_type": "RsaCtfTool",
+            "error": f"Timeout after {timeout}s"
         }
     except Exception as e:
         return {
             "success": False,
-            "output": str(e),
-            "flag": None
+            "attack_type": "RsaCtfTool",
+            "error": str(e)
         }
 
 # ============ HERRAMIENTA 5: ATACAR CIFRADOS CLÁSICOS ============
 
 @tool
-def attack_classical(ciphertext: str, max_attempts: int = 50) -> Dict[str, Any]:
+def attack_classical(ciphertext: str, max_attempts: int = 500) -> Dict[str, Any]:
     """
-    Ataca cifrados clásicos (Caesar, XOR, etc.).
+    Ataca cifrados clásicos mejorado (Caesar, XOR, etc.).
     
     Args:
         ciphertext: Texto cifrado
@@ -307,9 +584,13 @@ def attack_classical(ciphertext: str, max_attempts: int = 50) -> Dict[str, Any]:
     Returns:
         Dict con 'success', 'plaintext', 'cipher_type', 'key'
     """
-    results = []
+    results = {
+        "caesar": [],
+        "xor": [],
+        "found": None
+    }
     
-    # ATAQUE 1: Caesar / ROT-N
+    # ATAQUE 1: Caesar / ROT-N (mejorado)
     for shift in range(26):
         plaintext = ""
         for char in ciphertext:
@@ -319,7 +600,6 @@ def attack_classical(ciphertext: str, max_attempts: int = 50) -> Dict[str, Any]:
             else:
                 plaintext += char
         
-        # Buscar flag
         if "flag{" in plaintext.lower():
             return {
                 "success": True,
@@ -327,41 +607,109 @@ def attack_classical(ciphertext: str, max_attempts: int = 50) -> Dict[str, Any]:
                 "cipher_type": "Caesar",
                 "key": shift
             }
-        
-        results.append({"type": "caesar", "shift": shift, "preview": plaintext[:50]})
+        results["caesar"].append((shift, plaintext[:50]))
     
-    # ATAQUE 2: XOR single-byte
+    # ATAQUE 2: XOR - MEJORADO
+    # Intentar interpretar como hex, base64, o raw bytes
+    import base64
+    
+    cipher_bytes_options = []
+    
+    # Opción 1: Hex
     try:
-        # Intentar interpretar como hex
-        if all(c in '0123456789abcdefABCDEF ' for c in ciphertext.replace(' ', '')):
-            ciphertext_bytes = bytes.fromhex(ciphertext.replace(' ', ''))
-        else:
-            ciphertext_bytes = ciphertext.encode()
-        
+        if all(c in '0123456789abcdefABCDEF ' for c in ciphertext):
+            cipher_bytes_options.append(("hex", bytes.fromhex(ciphertext.replace(' ', ''))))
+    except:
+        pass
+    
+    # Opción 2: Base64
+    try:
+        cipher_bytes_options.append(("base64", base64.b64decode(ciphertext)))
+    except:
+        pass
+    
+    # Opción 3: Raw bytes
+    try:
+        cipher_bytes_options.append(("raw", ciphertext.encode()))
+    except:
+        pass
+    
+    for encoding_type, cipher_bytes in cipher_bytes_options:
         for key in range(256):
-            plaintext_bytes = bytes([b ^ key for b in ciphertext_bytes])
             try:
+                plaintext_bytes = bytes([b ^ key for b in cipher_bytes])
                 plaintext = plaintext_bytes.decode('utf-8', errors='ignore')
+                
                 if "flag{" in plaintext.lower():
                     return {
                         "success": True,
                         "plaintext": plaintext,
-                        "cipher_type": "XOR single-byte",
-                        "key": key
+                        "cipher_type": f"XOR single-byte ({encoding_type})",
+                        "key": hex(key),
+                        "key_decimal": key
                     }
                 
-                if len(results) < max_attempts:
-                    results.append({"type": "xor", "key": key, "preview": plaintext[:50]})
+                results["xor"].append((key, plaintext[:50]))
             except:
                 pass
+    
+    # ATAQUE 3: ROT13 específico
+    try:
+        rot13_text = ciphertext.encode().decode('rot13')
+        if "flag{" in rot13_text.lower():
+            return {
+                "success": True,
+                "plaintext": rot13_text,
+                "cipher_type": "ROT13",
+                "key": 13
+            }
     except:
         pass
     
+    # ATAQUE 4: Vigenère con claves comunes
+    common_keys = ["KEY", "SECRET", "PASSWORD", "CRYPTO", "FLAG", "CTF"]
+    for key in common_keys:
+        try:
+            plaintext = _vigenere_decrypt(ciphertext, key)
+            if "flag{" in plaintext.lower():
+                return {
+                    "success": True,
+                    "plaintext": plaintext,
+                    "cipher_type": "Vigenère",
+                    "key": key
+                }
+        except:
+            pass
+    
     return {
         "success": False,
-        "attempts": len(results),
-        "sample_results": results[:10]
+        "attempts": {
+            "caesar": len(results["caesar"]),
+            "xor": len(results["xor"])
+        },
+        "sample_results": {
+            "caesar": results["caesar"][:5],
+            "xor": results["xor"][:5]
+        }
     }
+
+def _vigenere_decrypt(ciphertext: str, key: str) -> str:
+    """Descifra texto usando Vigenère"""
+    plaintext = ""
+    key = key.upper()
+    key_index = 0
+    
+    for char in ciphertext:
+        if char.isalpha():
+            base = ord('A') if char.isupper() else ord('a')
+            key_char = key[key_index % len(key)]
+            shift = ord(key_char) - ord('A')
+            plaintext += chr((ord(char) - base - shift) % 26 + base)
+            key_index += 1
+        else:
+            plaintext += char
+    
+    return plaintext
 
 # ============ HERRAMIENTA 6: EJECUTAR SAGEMATH ============
 
