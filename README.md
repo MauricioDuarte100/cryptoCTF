@@ -64,16 +64,28 @@ python setup_complete.py
 # 4. Añade tu API key en .env
 ```
 
-### 3. **¡Listo para Usar!**
+### 3. **Inicializar Sistema de Métricas**
 ```bash
-# Probar el sistema
-python quick_test.py
+# Crear base de datos
+python init_database.py
 
+# Ejecutar benchmark inicial
+python benchmark.py --max-challenges 5
+
+# Ver métricas
+python show_metrics.py
+```
+
+### 4. **¡Listo para Usar!**
+```bash
 # Resolver un desafío
 python main.py solve -d "RSA challenge" -f examples/rsa_basic/chall.py
 
 # Interfaz web
 python main.py web  # http://localhost:5000
+
+# Análisis de rendimiento
+python analyze_performance.py
 ```
 
 ## 🛠️ Instalación Detallada
@@ -279,6 +291,42 @@ MIT License - Uso libre para CTFs y educación
 3. **Usa cache** para desafíos similares
 4. **Monitorea métricas** para mejorar rendimiento
 5. **Combina con otras herramientas** (Burp, Wireshark, etc.)
+
+## 📊 Sistema de Métricas (Fase 2.1)
+
+### **Base de Datos de Rendimiento**
+El agente registra automáticamente cada intento de resolución:
+- ✅ **Desafíos resueltos/fallidos** por tipo de crypto
+- ✅ **Tiempo de ejecución** y pasos utilizados
+- ✅ **Herramientas más efectivas** por categoría
+- ✅ **Datos de entrenamiento** para ML (Fase 2.2)
+
+### **Benchmark Automatizado**
+```bash
+# Ejecutar benchmark completo
+python benchmark.py
+
+# Benchmark filtrado
+python benchmark.py --types RSA Classical --max-challenges 10
+
+# Ver métricas detalladas
+python show_metrics.py
+
+# Análisis de rendimiento
+python analyze_performance.py
+```
+
+### **Métricas Actuales (Línea Base)**
+- **Tasa de Éxito General**: 33.3%
+- **Cifrados Clásicos**: 100.0% ✅
+- **RSA**: 0.0% ❌ (necesita mejora)
+- **XOR**: 0.0% ❌ (necesita mejora)
+
+### **Archivos de Métricas**
+- `ctf_history.db` - Base de datos SQLite con historial completo
+- `benchmark_report_*.json` - Reportes detallados de benchmark
+- `show_metrics.py` - Script para ver estadísticas
+- `analyze_performance.py` - Análisis de fortalezas/debilidades
 
 ---
 

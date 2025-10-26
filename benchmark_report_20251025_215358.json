@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-10-25T21:53:58.109750",
+  "total_challenges": 3,
+  "successful_challenges": 1,
+  "success_rate": 0.3333333333333333,
+  "total_benchmark_time": 0.05612993240356445,
+  "avg_challenge_time": 0.012387434641520182,
+  "median_challenge_time": 0.008385896682739258,
+  "avg_steps": 3.6666666666666665,
+  "avg_confidence": 0.6333333333333333,
+  "by_type": {
+    "RSA": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        0.022598981857299805
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.022598981857299805,
+      "median_time": 0.022598981857299805
+    },
+    "Classical": {
+      "total": 1,
+      "successful": 1,
+      "times": [
+        0.006177425384521484
+      ],
+      "success_rate": 1.0,
+      "avg_time": 0.006177425384521484,
+      "median_time": 0.006177425384521484
+    },
+    "XOR": {
+      "total": 1,
+      "successful": 0,
+      "times": [
+        0.008385896682739258
+      ],
+      "success_rate": 0.0,
+      "avg_time": 0.008385896682739258,
+      "median_time": 0.008385896682739258
+    }
+  },
+  "by_difficulty": {
+    "Easy": {
+      "total": 3,
+      "successful": 1,
+      "success_rate": 0.3333333333333333
+    }
+  },
+  "detailed_results": [
+    {
+      "name": "RSA Basic (e=3)",
+      "type": "RSA",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{small_e_is_vulnerable}",
+      "confidence": 0.3,
+      "steps_used": 4,
+      "total_time": 0.022598981857299805,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "rsa",
+        "hastad",
+        "small_e"
+      ]
+    },
+    {
+      "name": "Caesar Cipher (ROT13)",
+      "type": "Classical",
+      "difficulty": "Easy",
+      "success": true,
+      "flag_found": "flag{caesar_cipher_is_not_secure}",
+      "flag_correct": true,
+      "expected_flag": "flag{caesar_cipher_is_not_secure}",
+      "confidence": 0.9,
+      "steps_used": 3,
+      "total_time": 0.006177425384521484,
+      "error": null,
+      "tags": [
+        "classical",
+        "caesar",
+        "rot13"
+      ]
+    },
+    {
+      "name": "XOR Single Byte",
+      "type": "XOR",
+      "difficulty": "Easy",
+      "success": false,
+      "flag_found": "",
+      "flag_correct": false,
+      "expected_flag": "flag{xor_is_not_secure}",
+      "confidence": 0.7,
+      "steps_used": 4,
+      "total_time": 0.008385896682739258,
+      "error": "No se pudo resolver el desafío",
+      "tags": [
+        "xor",
+        "single_byte"
+      ]
+    }
+  ]
+}
