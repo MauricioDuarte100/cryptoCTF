@@ -155,21 +155,82 @@ def analyze_files(files: List[Dict[str, str]]) -> Dict[str, Any]:
 # ============ HERRAMIENTA 2: CLASIFICAR CRYPTO ============
 
 @tool
-def classify_crypto(analysis: Dict[str, Any]) -> Dict[str, Any]:
+def classify_crypto(analysis: Dict[str, Any], use_ml: bool = True) -> Dict[str, Any]:
     """
-    Clasifica el tipo de criptografía basándose en análisis de archivos.
+    Clasifica el tipo de criptografía usando ML o heurística.
     
     Args:
         analysis: Resultado de analyze_files()
-        
+        use_ml: Si intentar usar modelo BERT primero
+    
     Returns:
-        Dict con 'type' y 'confidence' (0.0 - 1.0)
+        {"type": "RSA", "confidence": 0.95, "method": "BERT"}
+        o
+        {"type": "RSA", "confidence": 0.85, "method": "heuristic"}
     """
+    
+    # INTENTO 1: ML (si disponible y use_ml=True)
+    if use_ml:
+        try:
+            import sys
+            from pathlib import Path
+            
+            # Añadir ml_phase2 al path si no está
+            ml_path = str(Path(__file__).parent.parent.parent / "ml_phase2")
+            if ml_path not in sys.path:
+                sys.path.insert(0, ml_path)
+            
+            from bert_classifier import BERT_AVAILABLE, bert_classifier
+            
+            if BERT_AVAILABLE:
+                # Preparar texto para BERT
+                text_parts = []
+                
+                # Agregar imports
+                imports = analysis.get('imports', [])
+                if imports:
+                    text_parts.append(f"Imports: {', '.join(imports)}")
+                
+                # Agregar variables
+                variables = analysis.get('variables', {})
+                if variables:
+                    var_info = ', '.join([f"{k}={v}" for k, v in list(variables.items())[:10]])  # Limitar
+                    text_parts.append(f"Variables: {var_info}")
+                
+                # Agregar indicadores
+                indicators = analysis.get('crypto_indicators', [])
+                if indicators:
+                    text_parts.append(f"Indicators: {', '.join(indicators)}")
+                
+                # Agregar contenido de archivos (muestra)
+                file_summary = analysis.get('file_summary', [])
+                if file_summary:
+                    text_parts.append(f"Files: {len(file_summary)} files analyzed")
+                
+                text = '\n'.join(text_parts)
+                
+                # Clasificar con BERT
+                ml_result = bert_classifier.classify(text, return_all_scores=True)
+                
+                # Si confianza alta (>70%), usar resultado ML
+                if ml_result.get('confidence', 0) > 0.70:
+                    return {
+                        "type": ml_result['type'],
+                        "confidence": ml_result['confidence'],
+                        "all_scores": ml_result.get('all_scores', {}),
+                        "method": "BERT"
+                    }
+                else:
+                    print(f"⚠️  BERT confidence low ({ml_result.get('confidence', 0):.2f}), falling back to heuristic")
+        
+        except Exception as e:
+            print(f"⚠️  BERT classification failed: {e}, using heuristic")
+    
+    # INTENTO 2: Heurística (fallback o si use_ml=False)
     indicators = analysis.get("crypto_indicators", [])
     variables = analysis.get("variables", {})
     imports = analysis.get("imports", [])
     
-    # Sistema de scoring
     scores = {}
     
     # RSA detection
@@ -226,9 +287,20 @@ def classify_crypto(analysis: Dict[str, Any]) -> Dict[str, Any]:
         encoding_score += 0.3
     scores["Encoding"] = min(encoding_score, 1.0)
     
-    # Seleccionar el tipo con mayor score
+    # ECC detection
+    ecc_score = 0.0
+    if "ECC" in indicators:
+        ecc_score += 0.4
+    scores["ECC"] = min(ecc_score, 1.0)
+    
+    # Seleccionar el mejor
     if not scores or max(scores.values()) < 0.3:
-        return {"type": "Unknown", "confidence": 0.1, "all_scores": scores}
+        return {
+            "type": "Unknown",
+            "confidence": 0.1,
+            "all_scores": scores,
+            "method": "heuristic"
+        }
     
     best_type = max(scores, key=scores.get)
     confidence = scores[best_type]
@@ -236,7 +308,8 @@ def classify_crypto(analysis: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "type": best_type,
         "confidence": confidence,
-        "all_scores": scores
+        "all_scores": scores,
+        "method": "heuristic"
     }
 
 # ============ HERRAMIENTA 3: CONECTAR NETCAT ============

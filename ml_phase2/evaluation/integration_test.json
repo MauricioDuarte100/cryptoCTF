@@ -1,0 +1,42 @@
+{
+  "total": 4,
+  "matches": 4,
+  "accuracy": 100.0,
+  "bert_usage": 0.0,
+  "heuristic_usage": 1.0,
+  "avg_confidence": 0.775,
+  "results": [
+    {
+      "name": "RSA Basic",
+      "expected": "RSA",
+      "got": "RSA",
+      "confidence": 0.8,
+      "method": "heuristic",
+      "match": true
+    },
+    {
+      "name": "Caesar Cipher",
+      "expected": "Classical",
+      "got": "Classical",
+      "confidence": 0.6,
+      "method": "heuristic",
+      "match": true
+    },
+    {
+      "name": "XOR Challenge",
+      "expected": "XOR",
+      "got": "XOR",
+      "confidence": 0.7,
+      "method": "heuristic",
+      "match": true
+    },
+    {
+      "name": "Base64 Encoding",
+      "expected": "Encoding",
+      "got": "Encoding",
+      "confidence": 1.0,
+      "method": "heuristic",
+      "match": true
+    }
+  ]
+}
