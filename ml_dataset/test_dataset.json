@@ -1,0 +1,174 @@
+[
+  {
+    "id": "caesar_3",
+    "name": "Caesar ROT7 Challenge 3",
+    "description": "Caesar cipher with rotation 7",
+    "type": "Classical",
+    "challenge_type_detail": "Caesar ROT7",
+    "difficulty": "Medium",
+    "parameters": {
+      "ciphertext": "mshn{jhlzhy_johsslunl_3}",
+      "rotation": 7,
+      "plaintext": "flag{caesar_challenge_3}"
+    },
+    "expected_flag": "flag{caesar_challenge_3}",
+    "source": "generated",
+    "content": "# Caesar Cipher Challenge - ROT7\n# Encrypted with rotation 7\n\nencrypted = \"mshn{jhlzhy_johsslunl_3}\"\n\nprint(\"Encrypted message:\", encrypted)\nprint(\"Hint: This is a Caesar cipher\")\nprint(\"Try different rotations to decrypt!\")\n"
+  },
+  {
+    "id": "caesar_15",
+    "name": "Caesar ROT1 Challenge 15",
+    "description": "Caesar cipher with rotation 1",
+    "type": "Classical",
+    "challenge_type_detail": "Caesar ROT1",
+    "difficulty": "Medium",
+    "parameters": {
+      "ciphertext": "gmbh{dbftbs_dibmmfohf_15}",
+      "rotation": 1,
+      "plaintext": "flag{caesar_challenge_15}"
+    },
+    "expected_flag": "flag{caesar_challenge_15}",
+    "source": "generated",
+    "content": "# Caesar Cipher Challenge - ROT1\n# Encrypted with rotation 1\n\nencrypted = \"gmbh{dbftbs_dibmmfohf_15}\"\n\nprint(\"Encrypted message:\", encrypted)\nprint(\"Hint: This is a Caesar cipher\")\nprint(\"Try different rotations to decrypt!\")\n"
+  },
+  {
+    "id": "rsa_15",
+    "name": "RSA Challenge 15 (Small Exponent)",
+    "description": "RSA challenge with Small Exponent",
+    "type": "RSA",
+    "challenge_type_detail": "Small Exponent",
+    "difficulty": "Medium",
+    "parameters": {
+      "n": 12011399,
+      "e": 5,
+      "c": 1105534,
+      "p": 3343,
+      "q": 3593,
+      "m": 552420
+    },
+    "expected_flag": "flag{m=552420}",
+    "source": "generated",
+    "content": "# RSA Challenge - Generated\n# n = 12011399 (p = 3343, q = 3593)\n# e = 5\n# Encrypted message: 552420\n\nn = 12011399\ne = 5\nc = 1105534\n\nprint(f\"n = {n}\")\nprint(f\"e = {e}\")\nprint(f\"c = {c}\")\nprint(\"Factor n to decrypt the message!\")\n"
+  },
+  {
+    "id": "encoding_3",
+    "name": "URL Encoding Challenge 3",
+    "description": "URL encoded message",
+    "type": "Encoding",
+    "challenge_type_detail": "URL Encoding",
+    "difficulty": "Easy",
+    "parameters": {
+      "encoded": "flag%7Bencoding_challenge_3%7D",
+      "encoding_type": "url",
+      "plaintext": "flag{encoding_challenge_3}"
+    },
+    "expected_flag": "flag{encoding_challenge_3}",
+    "source": "generated",
+    "content": "# URL Encoding Challenge\n\nencoded_message = \"flag%7Bencoding_challenge_3%7D\"\n\nprint(\"Encoded message:\", encoded_message)\nprint(\"Hint: This is URL encoded\")\nprint(\"Decode it to get the flag!\")\n"
+  },
+  {
+    "id": "xor_9",
+    "name": "XOR Single-Byte Challenge 9",
+    "description": "XOR with single byte key 0x14",
+    "type": "XOR",
+    "challenge_type_detail": "XOR Single-Byte",
+    "difficulty": "Easy",
+    "parameters": {
+      "ciphertext_hex": "727875736F6C7B664B777C757878717A73714B2D69",
+      "key": 20,
+      "plaintext": "flag{xor_challenge_9}"
+    },
+    "expected_flag": "flag{xor_challenge_9}",
+    "source": "generated",
+    "content": "# XOR Single Byte Challenge\n# Encrypted with key 0x14 (20 decimal)\n\nencrypted_hex = \"727875736F6C7B664B777C757878717A73714B2D69\"\n\nprint(\"Encrypted flag (hex):\", encrypted_hex)\nprint(\"Hint: Single byte XOR key was used\")\nprint(\"Try all 256 possible keys!\")\n"
+  },
+  {
+    "id": "rsa_20",
+    "name": "RSA Challenge 20 (Small Exponent)",
+    "description": "RSA challenge with Small Exponent",
+    "type": "RSA",
+    "challenge_type_detail": "Small Exponent",
+    "difficulty": "Hard",
+    "parameters": {
+      "n": 1252969181,
+      "e": 17,
+      "c": 163570099,
+      "p": 34499,
+      "q": 36319,
+      "m": 744281
+    },
+    "expected_flag": "flag{m=744281}",
+    "source": "generated",
+    "content": "# RSA Challenge - Generated\n# n = 1252969181 (p = 34499, q = 36319)\n# e = 17\n# Encrypted message: 744281\n\nn = 1252969181\ne = 17\nc = 163570099\n\nprint(f\"n = {n}\")\nprint(f\"e = {e}\")\nprint(f\"c = {c}\")\nprint(\"Factor n to decrypt the message!\")\n"
+  },
+  {
+    "id": "caesar_12",
+    "name": "Caesar ROT23 Challenge 12",
+    "description": "Caesar cipher with rotation 23",
+    "type": "Classical",
+    "challenge_type_detail": "Caesar ROT23",
+    "difficulty": "Medium",
+    "parameters": {
+      "ciphertext": "cixd{zxbpxo_zexiibkdb_12}",
+      "rotation": 23,
+      "plaintext": "flag{caesar_challenge_12}"
+    },
+    "expected_flag": "flag{caesar_challenge_12}",
+    "source": "generated",
+    "content": "# Caesar Cipher Challenge - ROT23\n# Encrypted with rotation 23\n\nencrypted = \"cixd{zxbpxo_zexiibkdb_12}\"\n\nprint(\"Encrypted message:\", encrypted)\nprint(\"Hint: This is a Caesar cipher\")\nprint(\"Try different rotations to decrypt!\")\n"
+  },
+  {
+    "id": "xor_10",
+    "name": "XOR Single-Byte Challenge 10",
+    "description": "XOR with single byte key 0xa4",
+    "type": "XOR",
+    "challenge_type_detail": "XOR Single-Byte",
+    "difficulty": "Easy",
+    "parameters": {
+      "ciphertext_hex": "C2C8C5C3DFDCCBD6FBC7CCC5C8C8C1CAC3C1FB9594D9",
+      "key": 164,
+      "plaintext": "flag{xor_challenge_10}"
+    },
+    "expected_flag": "flag{xor_challenge_10}",
+    "source": "generated",
+    "content": "# XOR Single Byte Challenge\n# Encrypted with key 0xa4 (164 decimal)\n\nencrypted_hex = \"C2C8C5C3DFDCCBD6FBC7CCC5C8C8C1CAC3C1FB9594D9\"\n\nprint(\"Encrypted flag (hex):\", encrypted_hex)\nprint(\"Hint: Single byte XOR key was used\")\nprint(\"Try all 256 possible keys!\")\n"
+  },
+  {
+    "id": "rsa_3",
+    "name": "RSA Challenge 3 (Small Exponent)",
+    "description": "RSA challenge with Small Exponent",
+    "type": "RSA",
+    "challenge_type_detail": "Small Exponent",
+    "difficulty": "Easy",
+    "parameters": {
+      "n": 42919,
+      "e": 3,
+      "c": 32630,
+      "p": 167,
+      "q": 257,
+      "m": 2035
+    },
+    "expected_flag": "flag{m=2035}",
+    "source": "generated",
+    "content": "# RSA Challenge - Generated\n# n = 42919 (p = 167, q = 257)\n# e = 3\n# Encrypted message: 2035\n\nn = 42919\ne = 3\nc = 32630\n\nprint(f\"n = {n}\")\nprint(f\"e = {e}\")\nprint(f\"c = {c}\")\nprint(\"Factor n to decrypt the message!\")\n"
+  },
+  {
+    "id": "rsa_7",
+    "name": "RSA Challenge 7 (Small Exponent)",
+    "description": "RSA challenge with Small Exponent",
+    "type": "RSA",
+    "challenge_type_detail": "Small Exponent",
+    "difficulty": "Medium",
+    "parameters": {
+      "n": 690227,
+      "e": 17,
+      "c": 228181,
+      "p": 761,
+      "q": 907,
+      "m": 160309
+    },
+    "expected_flag": "flag{m=160309}",
+    "source": "generated",
+    "content": "# RSA Challenge - Generated\n# n = 690227 (p = 761, q = 907)\n# e = 17\n# Encrypted message: 160309\n\nn = 690227\ne = 17\nc = 228181\n\nprint(f\"n = {n}\")\nprint(f\"e = {e}\")\nprint(f\"c = {c}\")\nprint(\"Factor n to decrypt the message!\")\n"
+  }
+]
