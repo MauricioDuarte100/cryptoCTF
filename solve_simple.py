@@ -569,7 +569,7 @@ def main():
         print(f"❌ File not found: {challenge_file}")
         sys.exit(1)
     
-    print("🚀 SIMPLE CTF SOLVER")
+    print("SIMPLE CTF SOLVER")
     print("Direct challenge execution and analysis")
     print()
     
@@ -577,11 +577,11 @@ def main():
     
     print("\n" + "=" * 50)
     if flag:
-        print("🏆 SUCCESS!")
-        print(f"🎯 FLAG: {flag}")
+        print("SUCCESS!")
+        print(f"FLAG: {flag}")
         sys.exit(0)
     else:
-        print("💔 FAILED")
+        print("FAILED")
         print("No flag found with current methods")
         sys.exit(1)
 

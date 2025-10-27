@@ -1,0 +1,30 @@
+{
+  "total_repos": 5,
+  "total_writeups": 176,
+  "by_attack_type": {
+    "Misc": 13,
+    "Unknown": 85,
+    "Reverse": 7,
+    "Hash": 12,
+    "XOR": 7,
+    "AES": 22,
+    "Pwn": 9,
+    "RSA": 9,
+    "ECC": 9,
+    "Web": 3
+  },
+  "by_team": {
+    "r3kapig": 32,
+    "project-sekai": 35,
+    "kalmar": 33,
+    "l3ak-team": 26,
+    "justcatthefish": 50
+  },
+  "errors": [
+    "Failed to clone https://github.com/sajjadium/ctf-archives",
+    "Failed to clone https://github.com/p4-team/ctf",
+    "Failed to clone https://github.com/TeamGreyFang/CTF-Writeups",
+    "Failed to clone https://github.com/VulnHub/ctf-writeups",
+    "Failed to clone https://github.com/ctfs/write-ups-2023"
+  ]
+}
