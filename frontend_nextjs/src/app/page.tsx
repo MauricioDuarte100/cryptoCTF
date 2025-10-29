@@ -132,6 +132,24 @@ const ChallengeSolver: React.FC = () => {
     setFiles([...files, { name: '', content: '' }]);
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = event.target.files;
+    if (!uploadedFiles) return;
+
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
+      const content = await file.text();
+      
+      setFiles(prev => [...prev, {
+        name: file.name,
+        content: content
+      }]);
+    }
+    
+    // Reset input
+    event.target.value = '';
+  };
+
   const handleFileChange = (index: number, field: 'name' | 'content', value: string) => {
     const newFiles = [...files];
     newFiles[index][field] = value;
@@ -193,15 +211,33 @@ const ChallengeSolver: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Challenge Files
               </label>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleAddFile}
-                disabled={solving}
-                icon={DocumentArrowUpIcon}
-              >
-                Add File
-              </Button>
+              <div className="flex space-x-2">
+                <input
+                  type="file"
+                  multiple
+                  accept=".py,.json,.txt,.md"
+                  onChange={handleFileUpload}
+                  disabled={solving}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                >
+                  <DocumentArrowUpIcon className="h-4 w-4 mr-1" />
+                  Upload Files
+                </label>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleAddFile}
+                  disabled={solving}
+                  icon={DocumentTextIcon}
+                >
+                  Add Manual
+                </Button>
+              </div>
             </div>
             
             {files.map((file, index) => (

@@ -22,6 +22,84 @@ logger = logging.getLogger(__name__)
 # Añadir paths
 sys.path.append('.')
 
+def save_for_ml_training(solve_data):
+    """Guarda datos de solución para entrenamiento ML"""
+    try:
+        # Crear directorio si no existe
+        ml_data_dir = Path("ml_training_data")
+        ml_data_dir.mkdir(exist_ok=True)
+        
+        # Preparar datos para ML
+        ml_entry = {
+            "title": f"Solved Challenge - {solve_data['timestamp']}",
+            "content": f"Challenge: {solve_data['description']}\n\nSolution: {solve_data['flag']}\n\nStrategy: {solve_data['strategy']}",
+            "attack_type": detect_attack_type_from_files(solve_data.get('files', [])),
+            "difficulty": "medium",  # Por defecto
+            "source": "user_solved",
+            "url": "user_generated",
+            "tags": extract_tags_from_solution(solve_data),
+            "timestamp": solve_data['timestamp'],
+            "success": solve_data['success'],
+            "time_taken": solve_data['time_taken']
+        }
+        
+        # Guardar en archivo JSONL
+        ml_file = ml_data_dir / "user_solved_challenges.jsonl"
+        with open(ml_file, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(ml_entry, ensure_ascii=False) + '\n')
+        
+        logger.info(f"💾 Saved ML training data: {ml_file}")
+        
+    except Exception as e:
+        logger.error(f"❌ Error saving ML data: {e}")
+
+def detect_attack_type_from_files(files):
+    """Detecta el tipo de ataque basado en los archivos"""
+    if not files:
+        return "misc"
+    
+    # Combinar contenido de todos los archivos
+    all_content = " ".join([f.get('content', '') for f in files]).lower()
+    
+    # Patrones de detección
+    if any(word in all_content for word in ['rsa', 'modulus', 'factorization']):
+        return "rsa"
+    elif any(word in all_content for word in ['aes', 'des', 'cipher', 'encrypt']):
+        return "aes"
+    elif any(word in all_content for word in ['caesar', 'vigenere', 'substitution']):
+        return "classical"
+    elif any(word in all_content for word in ['md5', 'sha', 'hash']):
+        return "hash"
+    else:
+        return "misc"
+
+def extract_tags_from_solution(solve_data):
+    """Extrae tags de la solución"""
+    tags = []
+    
+    # Tags basados en estrategia
+    strategy = solve_data.get('strategy', '').lower()
+    if 'simple' in strategy:
+        tags.append('simple_solver')
+    if 'enhanced' in strategy:
+        tags.append('enhanced_solver')
+    
+    # Tags basados en tiempo
+    time_taken = solve_data.get('time_taken', 0)
+    if time_taken < 5:
+        tags.append('fast_solve')
+    elif time_taken > 30:
+        tags.append('slow_solve')
+    
+    # Tags basados en archivos
+    files = solve_data.get('files', [])
+    if any('.py' in f.get('name', '') for f in files):
+        tags.append('python')
+    if any('.json' in f.get('name', '') for f in files):
+        tags.append('json_data')
+    
+    return tags[:5]  # Limitar a 5 tags
+
 # Modelos
 class ChallengeFile(BaseModel):
     name: str
@@ -189,13 +267,20 @@ async def solve_challenge(request: SolveRequest):
             )
             
             # Guardar en historial
-            solve_history.append({
+            history_entry = {
                 "timestamp": datetime.now().isoformat(),
                 "description": request.description,
                 "success": True,
                 "flag": result,
-                "time_taken": time_taken
-            })
+                "time_taken": time_taken,
+                "files": files,  # Guardar archivos para ML
+                "challenge_type": "Auto-detected",
+                "strategy": "Simple Solver"
+            }
+            solve_history.append(history_entry)
+            
+            # Guardar para entrenamiento ML
+            save_for_ml_training(history_entry)
             
             logger.info(f"✅ Success: {result}")
             return response

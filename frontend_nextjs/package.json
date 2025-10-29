@@ -28,7 +28,8 @@
     "recharts": "^2.8.0",
     "lucide-react": "^0.294.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0"
+    "tailwind-merge": "^2.0.0",
+    "react-dropzone": "^14.2.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
