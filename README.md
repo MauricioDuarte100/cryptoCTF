@@ -1,175 +1,246 @@
-# 🔐 CryptoCTF - AI-Powered Cryptography CTF Solver
+# CryptoCTF
 
-An intelligent system for analyzing and solving cryptographic CTF challenges using Machine Learning and RAG (Retrieval-Augmented Generation).
+An AI-powered system for analyzing and solving cryptographic CTF challenges using Machine Learning and Retrieval-Augmented Generation (RAG).
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![PyTorch](https://img.shields.io/badge/pytorch-2.0+-red.svg)
 ![License MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
-## 🏆 Solved Challenges
+---
 
-| Challenge | Type | Attack | Flag |
-|-----------|------|--------|------|
-| Convergent Cipher | Block Cipher | Differential Cryptanalysis | `FlagY{m33t_1n_th3_m1ddl3_0r_d1ff3r3n714l?}` |
-| Wesolowski VDF | VDF | Protocol Malleability | `FlagY{Wesolowski's_VDF_is_less_secure_in_Fiat-Shamir!}` |
-| Quadratic CRT | Number Theory | Z-CRT Reduction | `FlagY{qu4dr4t1c_1nt3g3rs_ar3_fun_...}` |
-| Ramson | Multi-Layer | Layer-by-layer Decryption | `FlagY{Hybr!d_Encryp7i0n_Fl4g}` |
-| Leaky RSA | RSA | Bellcore Fault Attack | `FlagY{f6fdd9f8ac38f5397731a3be3856c904}` |
-| Tux BMP | XOR Cipher | Known Plaintext | Visual in image |
-| Simple Encryption | Stream Cipher | Z3 Algebraic Solver | `FlagY{e4sy_3nc_3asy_d3c_a6cebdf01bf8a8feb61f}` |
+## Overview
 
-## 🏗️ Architecture
+CryptoCTF is a framework that combines machine learning classification with a knowledge base of solved challenges to assist in solving cryptographic CTF problems. The system:
+
+1. **Classifies** challenges by type (RSA, Hash, Classical, XOR, etc.)
+2. **Retrieves** similar solved challenges from an experience database
+3. **Suggests** attack patterns based on historical solutions
+4. **Provides** reusable solver modules for common cryptographic attacks
+
+---
+
+## Project Structure
 
 ```
 cryptoCTF/
-├── src/                          # Core source code
-│   ├── core/                     # Agent and classification engine
-│   │   ├── enhanced_agent.py     # Main solving agent
-│   │   └── challenge_classifier.py
-│   ├── rag/                      # RAG system for writeup retrieval
-│   │   ├── experience_retriever.py
-│   │   └── challenge_embeddings.py
-│   ├── learning/                 # Experience storage
-│   │   └── experience_storage.py
-│   └── training/                 # ML model training
-│       ├── train_classifier.py
-│       └── train_predictor.py
 │
-├── solver/                       # Challenge-specific solvers
-│   ├── modules/                  # Reusable attack modules
-│   │   ├── rsa.py               # RSA attacks (Wiener, Fermat, etc.)
-│   │   ├── dlog.py              # Discrete log attacks
-│   │   └── xor.py               # XOR analysis
-│   ├── solve_*.py               # Individual challenge solvers
-│   └── main.py                  # Solver entry point
+├── src/                              # Core source code
+│   ├── core/                         # Agent and classification engine
+│   │   ├── enhanced_agent.py         # Main solving agent
+│   │   └── challenge_classifier.py   # Type classification
+│   │
+│   ├── rag/                          # Retrieval-Augmented Generation
+│   │   ├── experience_retriever.py   # Similar challenge lookup
+│   │   └── challenge_embeddings.py   # Vector embeddings
+│   │
+│   ├── learning/                     # Experience management
+│   │   └── experience_storage.py     # SQLite + FAISS storage
+│   │
+│   └── training/                     # ML model training
+│       ├── train_classifier.py       # Challenge type classifier
+│       └── train_predictor.py        # Attack pattern predictor
 │
-├── challenges/                   # Challenge files
-├── data/                         # Training datasets
-│   └── writeups_enhanced_dataset.jsonl
-├── trained_model/                # Trained classifier (98.8% accuracy)
-└── trained_predictor/            # Attack predictor model
+├── solver/                           # Challenge-specific solvers
+│   ├── modules/                      # Reusable attack modules
+│   │   ├── rsa.py                    # RSA attacks
+│   │   ├── dlog.py                   # Discrete logarithm
+│   │   ├── xor.py                    # XOR analysis
+│   │   └── classical.py              # Classical ciphers
+│   │
+│   └── solve_*.py                    # Individual challenge solutions
+│
+├── challenges/                       # Challenge source files
+├── data/                             # Training datasets
+├── trained_model/                    # Trained classifier model
+├── trained_predictor/                # Attack predictor model
+│
+├── train_models.py                   # Model training script
+├── register_experiences.py           # Add solved challenges
+├── export_training_data.py           # Export for training
+└── requirements.txt                  # Dependencies
 ```
 
-## 🧠 ML Pipeline
+---
 
-### Challenge Classifier
-- **Architecture**: TF-IDF + Neural Network
-- **Training Data**: 507 examples
-- **Accuracy**: 98.8%
-- **Types Supported**: RSA, Hash, Classical, Encoding, XOR, AES, ECC, VDF, etc.
+## Installation
 
-### Attack Predictor
-- **Purpose**: Predict best attack pattern for a challenge type
-- **Integration**: Works with experience database for RAG retrieval
+### Prerequisites
 
-### Experience Storage
-- **Database**: SQLite with FAISS indexing
-- **Content**: Solved challenges with step-by-step solutions
-- **Usage**: Retrieves similar past solutions for new challenges
+- Python 3.10 or higher
+- pip package manager
 
-## 🚀 Quick Start
-
-### Installation
+### Setup
 
 ```bash
-# Clone repository
+# Clone the repository
 git clone https://github.com/MauricioDuarte100/cryptoCTF.git
 cd cryptoCTF
+
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### Train Models
+### Optional: API Keys
 
-```bash
-# Train the classifier with existing data
-python train_models.py --data data/writeups_enhanced_dataset.jsonl --epochs 3 --simple
+For LLM-enhanced analysis (optional), create a `.env` file:
+
+```ini
+GOOGLE_API_KEY=your-gemini-api-key
 ```
 
-### Register New Solutions
+---
+
+## Usage
+
+### 1. Solving a Challenge
+
+The solver modules provide functions for common cryptographic attacks:
+
+```python
+from solver.modules.rsa import wiener_attack, fermat_factorization
+from solver.modules.xor import xor_with_key, find_xor_key
+
+# Example: RSA with small private exponent
+d = wiener_attack(n, e)
+if d:
+    plaintext = pow(ciphertext, d, n)
+
+# Example: XOR with known plaintext
+key = find_xor_key(ciphertext, known_plaintext)
+decrypted = xor_with_key(ciphertext, key)
+```
+
+### 2. Using the Classification System
+
+```python
+from src.core.challenge_classifier import ChallengeClassifier
+
+classifier = ChallengeClassifier()
+classifier.load("trained_model/simple_classifier.pt")
+
+# Classify a challenge description
+challenge_type = classifier.predict(
+    "RSA encryption with small public exponent e=3"
+)
+print(challenge_type)  # Output: "RSA"
+```
+
+### 3. Retrieving Similar Challenges
+
+```python
+from src.learning.experience_storage import get_experience_storage
+
+storage = get_experience_storage()
+similar = storage.search_similar(
+    "Block cipher with modular inverse S-box",
+    top_k=3
+)
+
+for exp in similar:
+    print(f"Challenge: {exp.challenge_name}")
+    print(f"Attack: {exp.attack_pattern}")
+    print(f"Steps: {exp.solution_steps}")
+```
+
+---
+
+## Training the Models
+
+### Train the Classifier
 
 ```bash
-# After solving a challenge, register it
-python register_experiences.py
+python train_models.py \
+    --data data/writeups_enhanced_dataset.jsonl \
+    --epochs 3 \
+    --simple
+```
 
-# Export training data
+Expected output:
+```
+Loaded 507 examples
+Epoch 3: Loss=0.0675, Accuracy=98.8%
+Model saved to trained_model/simple_classifier.pt
+```
+
+### Adding New Solved Challenges
+
+1. Edit `register_experiences.py` to add your solution:
+
+```python
+new_exp = SolvedChallengeExperience(
+    challenge_id=str(uuid.uuid4()),
+    challenge_name="Your Challenge Name",
+    challenge_description="Description of the challenge",
+    challenge_type="RSA",  # or Hash, XOR, Classical, etc.
+    attack_pattern="Attack Name",
+    solution_steps=[
+        "Step 1: Analyze the cipher",
+        "Step 2: Apply the attack",
+        "Step 3: Recover the flag"
+    ],
+    flag_found="flag{...}"
+)
+storage.store_experience(new_exp)
+```
+
+2. Register and export:
+
+```bash
+python register_experiences.py
 python export_training_data.py
 ```
 
-### Solve a Challenge
+3. Retrain the model:
 
-```python
-from solver.main import solve_challenge
-
-# Analyze and solve a challenge
-result = solve_challenge("path/to/challenge.py", host="server.com", port=1234)
-print(result.flag)
+```bash
+python train_models.py --data data/writeups_enhanced_dataset.jsonl --epochs 3 --simple
 ```
 
-## 🛠️ Key Components
+---
 
-### Solver Modules
+## Supported Challenge Types
 
-| Module | Attacks |
-|--------|---------|
-| `rsa.py` | Wiener, Fermat, Common Factor, Small e |
-| `dlog.py` | Baby-Step Giant-Step, Pohlig-Hellman |
-| `xor.py` | Known Plaintext, Frequency Analysis |
+| Type | Description | Example Attacks |
+|------|-------------|-----------------|
+| RSA | RSA encryption vulnerabilities | Wiener, Fermat, Hastad, Common Factor |
+| Hash | Hash function weaknesses | Length Extension, Collision |
+| XOR | XOR-based encryption | Known Plaintext, Frequency Analysis |
+| Classical | Historical ciphers | Caesar, Vigenere, Substitution |
+| AES | AES implementation flaws | Padding Oracle, ECB Detection |
+| ECC | Elliptic curve attacks | Invalid Curve, Small Subgroup |
+| VDF | Verifiable Delay Functions | Protocol Malleability |
 
-### Core Classes
+---
 
-- **`EnhancedAgent`**: Main solving agent with ML classification
-- **`ExperienceStorage`**: SQLite + FAISS for solution retrieval
-- **`ChallengeClassifier`**: Neural network for type classification
+## Model Performance
 
-## 📊 Training Data Format
+- **Training Examples**: 507
+- **Classification Accuracy**: 98.8%
+- **Challenge Types**: 14 categories
 
-```json
-{
-  "challenge_name": "Example RSA",
-  "challenge_description": "RSA with small e and related messages",
-  "challenge_type": "RSA",
-  "attack_pattern": "Hastad Broadcast",
-  "solution_steps": ["Step 1...", "Step 2...", "Step 3..."],
-  "flag_found": "FlagY{example_flag}"
-}
-```
+---
 
-## 🔧 Configuration
+## Contributing
 
-Create a `.env` file for API keys (optional):
+1. Solve a cryptographic CTF challenge
+2. Document the solution in `register_experiences.py`
+3. Run the registration and export scripts
+4. Retrain the model
+5. Submit a pull request
 
-```ini
-GOOGLE_API_KEY=your-gemini-api-key  # For LLM integration
-```
+---
 
-## 📈 Model Performance
-
-```
-Types Distribution:
-- RSA: 102 examples
-- Hash: 100 examples  
-- Classical: 99 examples
-- Encoding: 97 examples
-- XOR: 97 examples
-- Others: 12 examples
-
-Final Accuracy: 98.8%
-```
-
-## 🤝 Contributing
-
-1. Solve a new challenge
-2. Add solution to `register_experiences.py`
-3. Run `python register_experiences.py`
-4. Run `python export_training_data.py`
-5. Retrain: `python train_models.py --data data/writeups_enhanced_dataset.jsonl`
-
-## 📝 License
+## License
 
 MIT License - See [LICENSE](LICENSE) for details.
 
-## 👤 Author
+---
+
+## Author
 
 **Mauricio Duarte** - [GitHub](https://github.com/MauricioDuarte100)
