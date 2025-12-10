@@ -1,283 +1,175 @@
-# 🎯 Automated CTF Challenge Solver - 80% Success Rate ACHIEVED
+# 🔐 CryptoCTF - AI-Powered Cryptography CTF Solver
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Success Rate](https://img.shields.io/badge/Success%20Rate-80%25-success.svg)](https://github.com/iNeenah/cryptoCTF)
-[![Status](https://img.shields.io/badge/Status-WORKING-brightgreen.svg)](https://github.com/iNeenah/cryptoCTF)
+An intelligent system for analyzing and solving cryptographic CTF challenges using Machine Learning and RAG (Retrieval-Augmented Generation).
 
-**An intelligent system that automatically analyzes, understands, and solves CTF challenges with validated 80% success rate**
+![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
+![PyTorch](https://img.shields.io/badge/pytorch-2.0+-red.svg)
+![License MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
-> **Original Goal**: "Upload 2-3 scripts with netcat port, system analyzes, understands problem, interacts with server, returns flag automatically with 80-90% success"
-> 
-> **Status**: ✅ **ACHIEVED** - 80% success rate validated on real challenges!
+## 🏆 Solved Challenges
 
-## 🚀 What Actually Works RIGHT NOW
+| Challenge | Type | Attack | Flag |
+|-----------|------|--------|------|
+| Convergent Cipher | Block Cipher | Differential Cryptanalysis | `FlagY{m33t_1n_th3_m1ddl3_0r_d1ff3r3n714l?}` |
+| Wesolowski VDF | VDF | Protocol Malleability | `FlagY{Wesolowski's_VDF_is_less_secure_in_Fiat-Shamir!}` |
+| Quadratic CRT | Number Theory | Z-CRT Reduction | `FlagY{qu4dr4t1c_1nt3g3rs_ar3_fun_...}` |
+| Ramson | Multi-Layer | Layer-by-layer Decryption | `FlagY{Hybr!d_Encryp7i0n_Fl4g}` |
+| Leaky RSA | RSA | Bellcore Fault Attack | `FlagY{f6fdd9f8ac38f5397731a3be3856c904}` |
+| Tux BMP | XOR Cipher | Known Plaintext | Visual in image |
+| Simple Encryption | Stream Cipher | Z3 Algebraic Solver | `FlagY{e4sy_3nc_3asy_d3c_a6cebdf01bf8a8feb61f}` |
 
-### ✅ **Core Solving System (PRODUCTION READY)**
-- **`solve_simple.py`** - Main solver with 80% validated success rate
-- **`solve_hybrid.py`** - Advanced hybrid approach with multiple strategies
-- **`solve_batch.py`** - Batch processing for multiple challenges
-- **Multi-agent coordination** - Basic planner, executor, validator agents
+## 🏗️ Architecture
 
-### ✅ **Supported Challenge Types (WORKING)**
-- **RSA Attacks**: Small exponent, common modulus, weak keys
-- **Classical Ciphers**: Caesar, Vigenère, substitution ciphers
-- **Hash Functions**: MD5, SHA variants, hash length extension
-- **AES/Symmetric**: ECB, CBC mode attacks, key recovery
-- **Miscellaneous**: XOR, base64, custom encodings
+```
+cryptoCTF/
+├── src/                          # Core source code
+│   ├── core/                     # Agent and classification engine
+│   │   ├── enhanced_agent.py     # Main solving agent
+│   │   └── challenge_classifier.py
+│   ├── rag/                      # RAG system for writeup retrieval
+│   │   ├── experience_retriever.py
+│   │   └── challenge_embeddings.py
+│   ├── learning/                 # Experience storage
+│   │   └── experience_storage.py
+│   └── training/                 # ML model training
+│       ├── train_classifier.py
+│       └── train_predictor.py
+│
+├── solver/                       # Challenge-specific solvers
+│   ├── modules/                  # Reusable attack modules
+│   │   ├── rsa.py               # RSA attacks (Wiener, Fermat, etc.)
+│   │   ├── dlog.py              # Discrete log attacks
+│   │   └── xor.py               # XOR analysis
+│   ├── solve_*.py               # Individual challenge solvers
+│   └── main.py                  # Solver entry point
+│
+├── challenges/                   # Challenge files
+├── data/                         # Training datasets
+│   └── writeups_enhanced_dataset.jsonl
+├── trained_model/                # Trained classifier (98.8% accuracy)
+└── trained_predictor/            # Attack predictor model
+```
 
-### ✅ **Validated Performance (REAL METRICS)**
-- **80% success rate** on validation dataset (24/30 challenges)
-- **15-45 seconds** average solve time
-- **Automatic fallback** strategies when primary methods fail
-- **Robust error handling** with detailed logging
+## 🧠 ML Pipeline
 
-## 🛠️ Quick Start - Use What Works Today
+### Challenge Classifier
+- **Architecture**: TF-IDF + Neural Network
+- **Training Data**: 507 examples
+- **Accuracy**: 98.8%
+- **Types Supported**: RSA, Hash, Classical, Encoding, XOR, AES, ECC, VDF, etc.
 
-### 1. Clone and Setup
+### Attack Predictor
+- **Purpose**: Predict best attack pattern for a challenge type
+- **Integration**: Works with experience database for RAG retrieval
+
+### Experience Storage
+- **Database**: SQLite with FAISS indexing
+- **Content**: Solved challenges with step-by-step solutions
+- **Usage**: Retrieves similar past solutions for new challenges
+
+## 🚀 Quick Start
+
+### Installation
+
 ```bash
-git clone https://github.com/iNeenah/cryptoCTF.git
+# Clone repository
+git clone https://github.com/MauricioDuarte100/cryptoCTF.git
 cd cryptoCTF
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configure API Key
+### Train Models
+
 ```bash
-echo "GEMINI_API_KEY=your_api_key_here" > .env
+# Train the classifier with existing data
+python train_models.py --data data/writeups_enhanced_dataset.jsonl --epochs 3 --simple
 ```
 
-### 3. Solve Your First Challenge
+### Register New Solutions
+
 ```bash
-# Method 1: Direct file solving
-python solve_simple.py path/to/challenge.py
+# After solving a challenge, register it
+python register_experiences.py
 
-# Method 2: Interactive mode
-python solve_hybrid.py
-
-# Method 3: Batch processing
-python solve_batch.py challenges_directory/
+# Export training data
+python export_training_data.py
 ```
 
-### 4. Validate the System
-```bash
-# Run validation on test challenges
-python final_validation.py
+### Solve a Challenge
 
-# Expected output: 80%+ success rate
-```
-
-## 📊 Real Performance Data
-
-Based on validation against 30 diverse CTF challenges:
-
-| Challenge Type | Success Rate | Avg Time | Status |
-|---------------|--------------|----------|---------|
-| RSA Attacks   | 85% (17/20)  | 12s      | ✅ Working |
-| Classical     | 90% (18/20)  | 8s       | ✅ Working |
-| Hash Functions| 75% (15/20)  | 6s       | ✅ Working |
-| AES/Symmetric | 70% (14/20)  | 18s      | ✅ Working |
-| Miscellaneous | 80% (16/20)  | 22s      | ✅ Working |
-
-**Overall: 80% (24/30) validated success rate**
-
-## 🏗️ System Architecture (Current)
-
-```
-Working CTF Solver
-├── solve_simple.py          ✅ Main solver (80% success)
-├── solve_hybrid.py          ✅ Advanced strategies
-├── solve_batch.py           ✅ Batch processing
-├── multi_agent/             ✅ Basic agent system
-│   ├── planner_agent.py     ✅ Strategy planning
-│   ├── executor_agent.py    ✅ Solution execution
-│   └── validator_agent.py   ✅ Result validation
-├── src/tools/               ✅ Attack implementations
-│   ├── rsa_attacks.py       ✅ RSA cryptanalysis
-│   └── tools.py             ✅ General crypto tools
-└── validation/              ✅ Test challenges
-```
-
-## 🚧 In Development (Templates/Prototypes)
-
-### 🔧 **Enhanced Features (Work in Progress)**
-- **Next.js Frontend** - Modern web interface (template created)
-- **FastAPI Backend** - REST API server (template created)
-- **Enhanced BERT** - ML-based challenge classification (prototype)
-- **RAG System** - Writeup-based context retrieval (prototype)
-- **Advanced Multi-Agent** - Enhanced coordination (in development)
-
-### 📋 **Development Status**
-- ✅ **Core functionality**: Production ready, 80% success rate
-- 🚧 **Web interface**: Templates created, needs implementation
-- 🚧 **ML components**: Prototypes exist, need training data
-- 🚧 **Enhanced features**: Architecture designed, implementation ongoing
-
-## 🎮 Usage Examples
-
-### Solve a Single Challenge
 ```python
-from solve_simple import solve_ctf_challenge
+from solver.main import solve_challenge
 
-# Solve any CTF challenge file
-flag = solve_ctf_challenge("challenge.py")
-print(f"Flag found: {flag}")
+# Analyze and solve a challenge
+result = solve_challenge("path/to/challenge.py", host="server.com", port=1234)
+print(result.flag)
 ```
 
-### Batch Processing
-```python
-from solve_batch import solve_multiple_challenges
+## 🛠️ Key Components
 
-# Process entire directory
-results = solve_multiple_challenges("ctf_challenges/")
-print(f"Solved {len([r for r in results if r])} out of {len(results)} challenges")
-```
+### Solver Modules
 
-### Multi-Agent Approach
-```python
-from multi_agent.coordination.coordinator import MultiAgentCoordinator
+| Module | Attacks |
+|--------|---------|
+| `rsa.py` | Wiener, Fermat, Common Factor, Small e |
+| `dlog.py` | Baby-Step Giant-Step, Pohlig-Hellman |
+| `xor.py` | Known Plaintext, Frequency Analysis |
 
-coordinator = MultiAgentCoordinator()
-result = coordinator.solve_challenge(
-    description="RSA challenge with small exponent",
-    files=[{"name": "challenge.py", "content": "..."}]
-)
-```
+### Core Classes
 
-## 🧪 Testing & Validation
+- **`EnhancedAgent`**: Main solving agent with ML classification
+- **`ExperienceStorage`**: SQLite + FAISS for solution retrieval
+- **`ChallengeClassifier`**: Neural network for type classification
 
-### Run Complete Validation
-```bash
-# Test on validation dataset
-python final_validation.py
+## 📊 Training Data Format
 
-# Expected results:
-# ✅ 24/30 challenges solved (80% success rate)
-# ✅ Average time: 18.5 seconds
-# ✅ All attack types working
-```
-
-### Individual Component Tests
-```bash
-python test_simple.py           # Test basic solver
-python benchmark.py             # Performance benchmarks
-python validate_setup.py        # System health check
+```json
+{
+  "challenge_name": "Example RSA",
+  "challenge_description": "RSA with small e and related messages",
+  "challenge_type": "RSA",
+  "attack_pattern": "Hastad Broadcast",
+  "solution_steps": ["Step 1...", "Step 2...", "Step 3..."],
+  "flag_found": "FlagY{example_flag}"
+}
 ```
 
 ## 🔧 Configuration
 
-### Environment Variables
-```bash
-# Required
-GEMINI_API_KEY=your_gemini_api_key
+Create a `.env` file for API keys (optional):
 
-# Optional
-OPENAI_API_KEY=your_openai_key
-DEBUG=true
-LOG_LEVEL=info
+```ini
+GOOGLE_API_KEY=your-gemini-api-key  # For LLM integration
 ```
 
-### Customization
-- **Attack strategies**: Edit `src/tools/tools.py`
-- **Agent behavior**: Modify `multi_agent/agents/`
-- **Timeout settings**: Configure in `src/config/`
+## 📈 Model Performance
 
-## 📈 Roadmap - What's Next
+```
+Types Distribution:
+- RSA: 102 examples
+- Hash: 100 examples  
+- Classical: 99 examples
+- Encoding: 97 examples
+- XOR: 97 examples
+- Others: 12 examples
 
-### Phase 1: Core Improvements (Next 2 weeks)
-- [ ] Increase success rate to 85%+
-- [ ] Add more attack types (ECC, lattice attacks)
-- [ ] Improve error handling and logging
-- [ ] Performance optimization
-
-### Phase 2: Enhanced Features (Next month)
-- [ ] Complete web interface implementation
-- [ ] Train BERT classifier on real CTF data
-- [ ] Build RAG system with writeup database
-- [ ] Enhanced multi-agent coordination
-
-### Phase 3: Advanced Capabilities (Future)
-- [ ] Real-time collaborative solving
-- [ ] Integration with CTF platforms
-- [ ] Custom challenge creation
-- [ ] Mobile application
-
-## 🏆 Achievements
-
-- ✅ **80% Success Rate** - Validated on diverse challenge set
-- ✅ **Multi-Agent Architecture** - Working coordination system
-- ✅ **Robust Fallbacks** - Multiple solving strategies
-- ✅ **Production Ready** - Stable, tested, documented
-- ✅ **Open Source** - Complete codebase available
+Final Accuracy: 98.8%
+```
 
 ## 🤝 Contributing
 
-We welcome contributions! The system is working and ready for enhancements.
+1. Solve a new challenge
+2. Add solution to `register_experiences.py`
+3. Run `python register_experiences.py`
+4. Run `python export_training_data.py`
+5. Retrain: `python train_models.py --data data/writeups_enhanced_dataset.jsonl`
 
-### Current Priorities
-1. **Increase success rate** - Add more attack methods
-2. **Improve performance** - Optimize slow solvers
-3. **Better documentation** - More examples and guides
-4. **Test coverage** - More validation challenges
+## 📝 License
 
-### Development Setup
-```bash
-git clone https://github.com/iNeenah/cryptoCTF.git
-cd cryptoCTF
-pip install -r requirements.txt
-python validate_setup.py  # Ensure everything works
-```
+MIT License - See [LICENSE](LICENSE) for details.
 
-## 📚 Documentation
+## 👤 Author
 
-- [**ACTUAL_STATUS.md**](docs/ACTUAL_STATUS.md) - Detailed component status
-- [**ATTACKS.md**](docs/ATTACKS.md) - Supported attack methods
-- [**CONTRIBUTING.md**](CONTRIBUTING.md) - How to contribute
-- [**FINAL_VALIDATION_REPORT.md**](FINAL_VALIDATION_REPORT.md) - Test results
-
-## 🚨 Known Limitations
-
-### Current Constraints
-- **Network challenges**: Limited support for remote exploitation
-- **Binary exploitation**: Focus is on cryptography challenges
-- **Complex protocols**: Simple text-based challenges work best
-- **Large keyspaces**: Brute force attacks have practical limits
-
-### Performance Notes
-- **Memory usage**: ~2GB for complex challenges
-- **Time limits**: 60-second timeout per challenge
-- **API dependencies**: Requires internet for LLM features
-
-## 📞 Support
-
-- 🐛 **Issues**: [GitHub Issues](https://github.com/iNeenah/cryptoCTF/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/iNeenah/cryptoCTF/discussions)
-- 📧 **Email**: Create an issue for support requests
-- 📖 **Wiki**: [Project Wiki](https://github.com/iNeenah/cryptoCTF/wiki)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **CTF Community** for challenges and feedback
-- **RsaCtfTool** for RSA attack implementations
-- **CyberChef** for crypto utilities inspiration
-- **Contributors** who helped achieve 80% success rate
-
----
-
-## 🎯 Bottom Line
-
-**This system WORKS.** It achieves 80% success rate on real CTF challenges, has a solid architecture, and is ready for use today. The enhanced features are in development, but the core functionality is production-ready.
-
-**Try it now:**
-```bash
-git clone https://github.com/iNeenah/cryptoCTF.git
-cd cryptoCTF && pip install -r requirements.txt
-python solve_simple.py your_challenge.py
-```
-
-**⭐ Star this repository if it helps you solve CTF challenges!**
-
-*Made with ❤️ by developers who believe in honest, working software*
+**Mauricio Duarte** - [GitHub](https://github.com/MauricioDuarte100)
