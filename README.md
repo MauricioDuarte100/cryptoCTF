@@ -1,21 +1,36 @@
 # CryptoCTF
 
-An AI-powered system for analyzing and solving cryptographic CTF challenges using Machine Learning and Retrieval-Augmented Generation (RAG).
+AI-powered cryptographic CTF challenge solver using lightweight ML classification and RAG (Retrieval-Augmented Generation).
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
-![PyTorch](https://img.shields.io/badge/pytorch-2.0+-red.svg)
 ![License MIT](https://img.shields.io/badge/license-MIT-green.svg)
+![Accuracy](https://img.shields.io/badge/accuracy-94.9%25-brightgreen.svg)
 
 ---
 
-## Overview
+## Features
 
-CryptoCTF is a framework that combines machine learning classification with a knowledge base of solved challenges to assist in solving cryptographic CTF problems. The system:
+- **Fast Classification**: TF-IDF + Random Forest classifier (94.9% accuracy, <1MB model)
+- **Experience Database**: 44+ solved challenges with attack patterns
+- **RAG System**: Retrieves similar challenges using FAISS embeddings
+- **Solver Modules**: Reusable attack implementations (RSA, XOR, Hash, ECC)
 
-1. **Classifies** challenges by type (RSA, Hash, Classical, XOR, etc.)
-2. **Retrieves** similar solved challenges from an experience database
-3. **Suggests** attack patterns based on historical solutions
-4. **Provides** reusable solver modules for common cryptographic attacks
+---
+
+## Quick Start
+
+```bash
+# Clone and install
+git clone https://github.com/MauricioDuarte100/cryptoCTF.git
+cd cryptoCTF
+pip install -r requirements.txt
+
+# Classify a challenge
+python train_lightweight.py --test
+
+# Train the model (optional)
+python train_lightweight.py
+```
 
 ---
 
@@ -23,224 +38,120 @@ CryptoCTF is a framework that combines machine learning classification with a kn
 
 ```
 cryptoCTF/
-│
-├── src/                              # Core source code
-│   ├── core/                         # Agent and classification engine
-│   │   ├── enhanced_agent.py         # Main solving agent
-│   │   └── challenge_classifier.py   # Type classification
-│   │
-│   ├── rag/                          # Retrieval-Augmented Generation
-│   │   ├── experience_retriever.py   # Similar challenge lookup
-│   │   └── challenge_embeddings.py   # Vector embeddings
-│   │
-│   ├── learning/                     # Experience management
-│   │   └── experience_storage.py     # SQLite + FAISS storage
-│   │
-│   └── training/                     # ML model training
-│       ├── train_classifier.py       # Challenge type classifier
-│       └── train_predictor.py        # Attack pattern predictor
-│
-├── solver/                           # Challenge-specific solvers
-│   ├── modules/                      # Reusable attack modules
-│   │   ├── rsa.py                    # RSA attacks
-│   │   ├── dlog.py                   # Discrete logarithm
-│   │   ├── xor.py                    # XOR analysis
-│   │   └── classical.py              # Classical ciphers
-│   │
-│   └── solve_*.py                    # Individual challenge solutions
-│
-├── challenges/                       # Challenge source files
-├── data/                             # Training datasets
-├── trained_model/                    # Trained classifier model
-├── trained_predictor/                # Attack predictor model
-│
-├── train_models.py                   # Model training script
-├── register_experiences.py           # Add solved challenges
-├── export_training_data.py           # Export for training
-└── requirements.txt                  # Dependencies
-```
-
----
-
-## Installation
-
-### Prerequisites
-
-- Python 3.10 or higher
-- pip package manager
-
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/MauricioDuarte100/cryptoCTF.git
-cd cryptoCTF
-
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Optional: API Keys
-
-For LLM-enhanced analysis (optional), create a `.env` file:
-
-```ini
-GOOGLE_API_KEY=your-gemini-api-key
+├── src/
+│   ├── core/               # Agent and classifier
+│   ├── rag/                # Experience retrieval
+│   └── learning/           # Experience storage (SQLite + FAISS)
+├── solver/
+│   ├── modules/            # Attack modules (rsa.py, xor.py, etc.)
+│   └── solve_*.py          # Individual challenge solutions
+├── challenges/             # CTF challenge files
+├── data/
+│   └── training_data.jsonl # 1176 training examples
+├── trained_lightweight/    # Trained classifier (~1MB)
+├── train_lightweight.py    # Main training script
+└── register_experiences.py # Add solved challenges
 ```
 
 ---
 
 ## Usage
 
-### 1. Solving a Challenge
-
-The solver modules provide functions for common cryptographic attacks:
+### Classify a Challenge
 
 ```python
-from solver.modules.rsa import wiener_attack, fermat_factorization
-from solver.modules.xor import xor_with_key, find_xor_key
+from train_lightweight import predict
 
-# Example: RSA with small private exponent
+challenge = "RSA with small exponent e=3, broadcast attack"
+type_, confidence = predict(challenge)
+print(f"{type_} ({confidence:.0%})")  # RSA (87%)
+```
+
+### Use Solver Modules
+
+```python
+from solver.modules.rsa import wiener_attack
+from solver.modules.xor import find_xor_key
+
+# Wiener attack for small d
 d = wiener_attack(n, e)
-if d:
-    plaintext = pow(ciphertext, d, n)
 
-# Example: XOR with known plaintext
+# XOR known-plaintext attack
 key = find_xor_key(ciphertext, known_plaintext)
-decrypted = xor_with_key(ciphertext, key)
 ```
 
-### 2. Using the Classification System
-
-```python
-from src.core.challenge_classifier import ChallengeClassifier
-
-classifier = ChallengeClassifier()
-classifier.load("trained_model/simple_classifier.pt")
-
-# Classify a challenge description
-challenge_type = classifier.predict(
-    "RSA encryption with small public exponent e=3"
-)
-print(challenge_type)  # Output: "RSA"
-```
-
-### 3. Retrieving Similar Challenges
+### Retrieve Similar Challenges
 
 ```python
 from src.learning.experience_storage import get_experience_storage
 
 storage = get_experience_storage()
-similar = storage.search_similar(
-    "Block cipher with modular inverse S-box",
-    top_k=3
-)
+similar = storage.search_similar("AES padding oracle attack", top_k=3)
 
 for exp in similar:
-    print(f"Challenge: {exp.challenge_name}")
-    print(f"Attack: {exp.attack_pattern}")
-    print(f"Steps: {exp.solution_steps}")
+    print(f"{exp.challenge_name}: {exp.attack_pattern}")
 ```
 
 ---
 
-## Training the Models
+## Model Stats
 
-### Train the Classifier
+| Metric | Value |
+|--------|-------|
+| Training Examples | 1176 |
+| Test Accuracy | 94.9% |
+| Cross-Validation | 94.6% |
+| Model Size | 1.08 MB |
+| Training Time | ~3 sec |
 
-```bash
-python train_models.py \
-    --data data/writeups_enhanced_dataset.jsonl \
-    --epochs 3 \
-    --simple
-```
+### Categories
 
-Expected output:
-```
-Loaded 507 examples
-Epoch 3: Loss=0.0675, Accuracy=98.8%
-Model saved to trained_model/simple_classifier.pt
-```
+| Type | Examples | Type | Examples |
+|------|----------|------|----------|
+| crypto | 1088 | RSA | 31 |
+| Hash | 34 | ECC | 27 |
+| AES | 20 | XOR | 12 |
+| misc | 36 | DSA | 2 |
 
-### Adding New Solved Challenges
+---
 
-1. Edit `register_experiences.py` to add your solution:
+## Adding New Challenges
+
+1. Edit `register_experiences.py`:
 
 ```python
 new_exp = SolvedChallengeExperience(
-    challenge_id=str(uuid.uuid4()),
-    challenge_name="Your Challenge Name",
-    challenge_description="Description of the challenge",
-    challenge_type="RSA",  # or Hash, XOR, Classical, etc.
+    challenge_name="Challenge Name",
+    challenge_type="RSA",
     attack_pattern="Attack Name",
-    solution_steps=[
-        "Step 1: Analyze the cipher",
-        "Step 2: Apply the attack",
-        "Step 3: Recover the flag"
-    ],
+    solution_steps=["Step 1", "Step 2"],
     flag_found="flag{...}"
 )
 storage.store_experience(new_exp)
 ```
 
-2. Register and export:
+2. Run: `python register_experiences.py`
 
-```bash
-python register_experiences.py
-python export_training_data.py
-```
-
-3. Retrain the model:
-
-```bash
-python train_models.py --data data/writeups_enhanced_dataset.jsonl --epochs 3 --simple
-```
+3. Retrain: `python train_lightweight.py`
 
 ---
 
-## Supported Challenge Types
+## Supported Attacks
 
-| Type | Description | Example Attacks |
-|------|-------------|-----------------|
-| RSA | RSA encryption vulnerabilities | Wiener, Fermat, Hastad, Common Factor |
-| Hash | Hash function weaknesses | Length Extension, Collision |
-| XOR | XOR-based encryption | Known Plaintext, Frequency Analysis |
-| Classical | Historical ciphers | Caesar, Vigenere, Substitution |
-| AES | AES implementation flaws | Padding Oracle, ECB Detection |
-| ECC | Elliptic curve attacks | Invalid Curve, Small Subgroup |
-| VDF | Verifiable Delay Functions | Protocol Malleability |
-
----
-
-## Model Performance
-
-- **Training Examples**: 507
-- **Classification Accuracy**: 98.8%
-- **Challenge Types**: 14 categories
-
----
-
-## Contributing
-
-1. Solve a cryptographic CTF challenge
-2. Document the solution in `register_experiences.py`
-3. Run the registration and export scripts
-4. Retrain the model
-5. Submit a pull request
+| Type | Attacks |
+|------|---------|
+| **RSA** | Wiener, Fermat, Hastad, Common Factor, Bleichenbacher |
+| **XOR** | Known Plaintext, Frequency Analysis, Repeating Key |
+| **Hash** | Length Extension, Birthday Attack, Collision |
+| **AES** | Padding Oracle, ECB Detection, Bit Flipping |
+| **ECC** | Invalid Curve, Small Subgroup, Nonce Reuse |
 
 ---
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](LICENSE)
 
 ---
-
-## Author
 
 **Mauricio Duarte** - [GitHub](https://github.com/MauricioDuarte100)
