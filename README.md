@@ -19,7 +19,6 @@ AI-powered cryptographic CTF challenge solver using lightweight ML classificatio
 ---
 
 ## Quick Start
-
 ```bash
 # Clone and install
 git clone https://github.com/MauricioDuarte100/cryptoCTF.git
@@ -28,12 +27,53 @@ pip install -r requirements.txt
 
 # Auto-solve a challenge
 python auto_solve.py challenge.py
+```
 
-# Interactive mode
-python auto_solve.py --interactive
+---
 
-# Check status
-python auto_solve.py --status
+## Training the Model
+
+You can retrain the classifier with your own dataset or updated challenge solutions.
+
+1. **Prepare Data**: Add your JSONL examples to `data/training_data.jsonl`.
+   ```json
+   {"challenge_name": "...", "description": "...", "solution_steps": ["..."]}
+   ```
+
+2. **Run Training**:
+   ```bash
+   python train_lightweight.py --data data/training_data.jsonl
+   ```
+
+3. **Output**: The optimized model is saved to `trained_lightweight/`.
+
+---
+
+## Integration with AI Agents
+
+CryptoCTF is built to accept commands from AI coding assistants like Gemini CLI, Antigravity, Claude Code, or OpenCode.
+
+### Gemini CLI / Antigravity
+Since these agents have shell access, you can instruct them to use the auto-solver directly:
+
+> "Solve the challenge in `chall.py` using `auto_solve.py`."
+
+```bash
+python auto_solve.py --file chall.py
+```
+
+### Claude Code / OpenCode
+For agents that ingest context, you can provide the solver modules as a toolkit.
+
+1. **Load Context**: Provide the `solver/modules/` directory to the agent.
+2. **Prompt**:
+   > "Use the `RSASolver` class to recover the private key from these parameters..."
+
+```python
+# Example agent usage pattern
+from solver.modules.rsa import RSASolver
+solver = RSASolver()
+print(solver.solve(n, e, c))
 ```
 
 ---
