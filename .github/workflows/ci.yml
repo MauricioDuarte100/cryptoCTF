@@ -1,0 +1,70 @@
+name: CryptoCTF CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+    
+    - name: Run unit tests
+      run: |
+        python -m pytest tests/test_modules.py -v --tb=short
+    
+    - name: Test module imports
+      run: |
+        python -c "from solver.modules import RSASolver, ECDSASolver, AESSolver, ECCSolver, LLL"
+        python -c "from auto_solve import AutoSolver"
+        echo "All modules import successfully"
+    
+    - name: Check classifier
+      run: |
+        python -c "
+        from train_lightweight import predict
+        result, conf = predict('RSA with small exponent e=3')
+        print(f'Classification: {result} ({conf:.0%})')
+        assert conf > 0.5, 'Classifier confidence too low'
+        "
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install linting tools
+      run: |
+        pip install flake8
+    
+    - name: Lint with flake8
+      run: |
+        # Stop on syntax errors or undefined names
+        flake8 solver/modules/*.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Warnings (non-blocking)
+        flake8 solver/modules/*.py --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics

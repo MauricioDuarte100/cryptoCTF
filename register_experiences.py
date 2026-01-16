@@ -374,6 +374,59 @@ def register_experiences():
     storage.store_experience(a_fact_exp)
     print(f"✅ Registered: {a_fact_exp.challenge_name}")
 
+    # 15. Nobody (RSA Module Mismatch Attack)
+    nobody_exp = SolvedChallengeExperience(
+        challenge_id=str(uuid.uuid4()),
+        challenge_name="Nobody RSA",
+        challenge_description="RSA signature service with inconsistent moduli. Signature uses mod p with d = e^(-1) mod (p-1), but verification uses mod n = p*q. Encryption option uses mod q.",
+        challenge_type="RSA",
+        difficulty="Medium",
+        source_files=[],
+        server_host="tcp.flagyard.com",
+        server_port=27538,
+        solution_successful=True,
+        attack_pattern="Module Mismatch Signature Forgery",
+        solution_steps=[
+            "Identify inconsistency: signature mod p but verification mod n",
+            "Extract q: use encrypt option with two messages, compute GCD(m1^e - c1, m2^e - c2)",
+            "Extract p: use sign option with two messages, compute GCD(sig1^e - h1, sig2^e - h2)",
+            "Forge valid signature: with p,q known, compute d_n = e^(-1) mod φ(n)",
+            "Sign target message 'give_me_flag' with correct private key",
+            "Submit forged signature to pass verification and get flag"
+        ],
+        flag_found="FlagY{6e330bf1e11f25ff1ef1ed5a36e3c4ce}"
+    )
+    storage.store_experience(nobody_exp)
+    print(f"✅ Registered: {nobody_exp.challenge_name}")
+
+    # 16. Smol - ECDSA Biased Nonce Attack (nitectf25)
+    smol_exp = SolvedChallengeExperience(
+        challenge_id=str(uuid.uuid4()),
+        challenge_name="Smol ECDSA Biased Nonce",
+        challenge_description="ECDSA on SECP256k1 with 200-bit nonces (56-bit bias). Server provides m=r*s, a=(10+r)^11 mod m, b=(s^2+10)^r mod m. Must forge signature for 'gimme_flag' to get flag.",
+        challenge_type="ECC/ECDSA",
+        difficulty="Medium-Hard",
+        source_files=[],
+        server_host="smol.chals.nitectf25.live",
+        server_port=1337,
+        solution_successful=True,
+        attack_pattern="Hidden Number Problem (HNP) Lattice Attack",
+        solution_steps=[
+            "Identify nonce k is biased: k < 2^200 on 256-bit curve (56-bit bias)",
+            "Extract r,s from m,a,b: use GCD(a - 10^11, m) since a ≡ 10^11 (mod r)",
+            "Collect multiple signatures (r_i, s_i, z_i) with same message",
+            "Build HNP system: k_i = s_i^{-1} * (z + r_i * d) mod n where k_i < 2^200",
+            "Construct lattice matrix: diagonal N, u_i = r_i*s_i^{-1}, t_i = z*s_i^{-1}",
+            "Apply LLL/BKZ reduction to find short vector containing private key d",
+            "Verify d by checking recovered k values are within bound",
+            "Forge valid ECDSA signature for 'gimme_flag' using recovered d",
+            "Submit forged (r,s) to claim flag"
+        ],
+        flag_found="nite{ECDSA_biased_nonce_HNP_attack}"
+    )
+    storage.store_experience(smol_exp)
+    print(f"✅ Registered: {smol_exp.challenge_name}")
+
     print("\n🎉 All new experiences stored successfully!")
 
 if __name__ == "__main__":

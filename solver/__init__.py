@@ -1,3 +1,0 @@
-"""
-Crypto CTF Solver Package
-"""

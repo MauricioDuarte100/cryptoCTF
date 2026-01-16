@@ -122,11 +122,12 @@ class ExperienceStorage:
         """Lazy load the sentence transformer model."""
         if self._embedder is None:
             if not HAS_SENTENCE_TRANSFORMERS:
-                raise ImportError(
-                    "sentence-transformers not installed. "
-                    "Run: pip install sentence-transformers"
-                )
-            self._embedder = SentenceTransformer(self.model_name)
+                return None
+            try:
+                self._embedder = SentenceTransformer(self.model_name)
+            except Exception as e:
+                print(f"⚠️ Warning: Could not load SentenceTransformer: {e}")
+                return None
         return self._embedder
     
     def _init_database(self):
@@ -244,7 +245,12 @@ class ExperienceStorage:
     
     def _compute_embedding(self, text: str) -> np.ndarray:
         """Compute embedding for text."""
-        embedding = self.embedder.encode(text, normalize_embeddings=True)
+        embedder = self.embedder
+        if embedder is None:
+             # Return zero vector if no embedder (simulating 384 dimensions)
+             return np.zeros(self.EMBEDDING_DIM, dtype=np.float32)
+             
+        embedding = embedder.encode(text, normalize_embeddings=True)
         return embedding.astype(np.float32)
     
     def store_experience(self, experience: SolvedChallengeExperience) -> str:

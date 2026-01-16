@@ -1,10 +1,8 @@
-"""
-Script to export experiences from storage to training dataset.
-"""
 
 from src.learning.experience_storage import get_experience_storage
 import json
 import os
+
 
 def export_data():
     storage = get_experience_storage()

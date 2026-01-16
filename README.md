@@ -4,16 +4,17 @@ AI-powered cryptographic CTF challenge solver using lightweight ML classificatio
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License MIT](https://img.shields.io/badge/license-MIT-green.svg)
-![Accuracy](https://img.shields.io/badge/accuracy-94.9%25-brightgreen.svg)
+![Accuracy](https://img.shields.io/badge/accuracy-79%25-brightgreen.svg)
 
 ---
 
 ## Features
 
-- **Fast Classification**: TF-IDF + Random Forest classifier (94.9% accuracy, <1MB model)
-- **Experience Database**: 44+ solved challenges with attack patterns
+- **Fast Classification**: TF-IDF + Random Forest classifier (79% accuracy, ~3.6MB model)
+- **Experience Database**: 1750+ solved challenges with attack patterns from 2023-2025 CTFs
 - **RAG System**: Retrieves similar challenges using FAISS embeddings
-- **Solver Modules**: Reusable attack implementations (RSA, XOR, Hash, ECC)
+- **Auto Solver**: Complete pipeline (classify → retrieve → solve)
+- **Solver Modules**: RSA, ECDSA, AES, ECC, XOR, Lattice attacks
 
 ---
 
@@ -25,11 +26,14 @@ git clone https://github.com/MauricioDuarte100/cryptoCTF.git
 cd cryptoCTF
 pip install -r requirements.txt
 
-# Classify a challenge
-python train_lightweight.py --test
+# Auto-solve a challenge
+python auto_solve.py challenge.py
 
-# Train the model (optional)
-python train_lightweight.py
+# Interactive mode
+python auto_solve.py --interactive
+
+# Check status
+python auto_solve.py --status
 ```
 
 ---
@@ -43,54 +47,111 @@ cryptoCTF/
 │   ├── rag/                # Experience retrieval
 │   └── learning/           # Experience storage (SQLite + FAISS)
 ├── solver/
-│   ├── modules/            # Attack modules (rsa.py, xor.py, etc.)
-│   └── solve_*.py          # Individual challenge solutions
-├── challenges/             # CTF challenge files
+│   └── modules/
+│       ├── rsa.py          # RSA attacks (9 methods)
+│       ├── ecdsa.py        # ECDSA attacks (nonce reuse, HNP)
+│       ├── aes.py          # AES attacks (padding oracle, ECB, CBC)
+│       ├── ecc.py          # ECC attacks (Pohlig-Hellman, Invalid Curve)
+│       ├── lattice.py      # LLL/BKZ lattice reduction
+│       └── xor.py          # XOR attacks
 ├── data/
-│   └── training_data.jsonl # 1176 training examples
-├── trained_lightweight/    # Trained classifier (~1MB)
-├── train_lightweight.py    # Main training script
-└── register_experiences.py # Add solved challenges
+│   └── training_data.jsonl # 1700+ training examples (Updated 2025)
+├── auto_solve.py           # Unified auto-solver
+├── tests/
+│   └── test_modules.py     # Unit tests (20+ tests)
+└── train_lightweight.py    # Training script
 ```
 
 ---
 
-## Usage
+## Auto Solver
 
-### Classify a Challenge
+```bash
+# Solve from file
+python auto_solve.py challenge.py
 
-```python
-from train_lightweight import predict
+# Force type
+python auto_solve.py --file output.txt --type RSA
 
-challenge = "RSA with small exponent e=3, broadcast attack"
-type_, confidence = predict(challenge)
-print(f"{type_} ({confidence:.0%})")  # RSA (87%)
+# Interactive mode
+python auto_solve.py --interactive
 ```
 
-### Use Solver Modules
+The auto solver runs a complete pipeline:
+1. **CLASSIFY** - Identifies challenge type (RSA, ECC, AES, etc.)
+2. **RETRIEVE** - Finds similar solved challenges
+3. **EXTRACT** - Extracts parameters (n, e, c, etc.)
+4. **SOLVE** - Applies appropriate attack modules
 
+---
+
+## Solver Modules
+
+### RSA (`solver/modules/rsa.py`)
 ```python
-from solver.modules.rsa import wiener_attack
-from solver.modules.xor import find_xor_key
+from solver.modules.rsa import RSASolver
 
-# Wiener attack for small d
-d = wiener_attack(n, e)
+solver = RSASolver()
+result = solver.solve(n, e, c)  # Auto-tries multiple attacks
 
-# XOR known-plaintext attack
-key = find_xor_key(ciphertext, known_plaintext)
+# Individual attacks
+solver.hastad_broadcast(ciphertexts, moduli, e)
+solver.common_modulus(n, e1, e2, c1, c2)
+solver.pollard_rho(n, e, c)
 ```
 
-### Retrieve Similar Challenges
-
+### ECDSA (`solver/modules/ecdsa.py`)
 ```python
-from src.learning.experience_storage import get_experience_storage
+from solver.modules.ecdsa import ECDSASolver, ecdsa_nonce_reuse
 
-storage = get_experience_storage()
-similar = storage.search_similar("AES padding oracle attack", top_k=3)
+# Nonce reuse attack (when r1 == r2)
+d = ecdsa_nonce_reuse(r, s1, s2, z1, z2, n)
 
-for exp in similar:
-    print(f"{exp.challenge_name}: {exp.attack_pattern}")
+# Biased nonce (HNP + LLL)
+solver = ECDSASolver()
+d = solver.biased_nonce_attack(signatures, n, bias_bits)
 ```
+
+### AES (`solver/modules/aes.py`)
+```python
+from solver.modules.aes import AESSolver, padding_oracle
+
+# Padding oracle attack
+plaintext = padding_oracle(oracle_func, ciphertext, iv)
+
+# ECB byte-at-a-time
+solver = AESSolver()
+secret = solver.ecb_oracle_attack(oracle_func)
+
+# CBC bit flipping
+modified = solver.cbc_bit_flip(ct, known, target, position)
+```
+
+### Lattice (`solver/modules/lattice.py`)
+```python
+from solver.modules.lattice import LLL, BKZ, Matrix, solve_hnp
+
+# LLL reduction
+M = Matrix([[1, 0, 0, 1021], [0, 1, 0, 2011]])
+reduced = LLL(M)
+
+# Hidden Number Problem (ECDSA biased nonce)
+d = solve_hnp(signatures, curve_order, nonce_bits)
+```
+
+---
+
+## Supported Attacks
+
+| Module | Attacks |
+|--------|---------|
+| **RSA** | Cube Root, Wiener, Fermat, Pollard p-1, Pollard Rho, Hastad Broadcast, Common Modulus, Franklin-Reiter |
+| **ECDSA** | Nonce Reuse, Biased Nonce (HNP), Signature Malleability |
+| **AES** | Padding Oracle, ECB Oracle, CBC Bit Flip, GCM Forbidden Attack |
+| **ECC** | BSGS, Pohlig-Hellman, Invalid Curve Attack, Smart's Attack |
+| **Lattice** | LLL, BKZ, Hidden Number Problem |
+| **XOR** | Single-byte, Repeating Key |
+| **Classical** | Caesar, Frequency Analysis |
 
 ---
 
@@ -98,53 +159,40 @@ for exp in similar:
 
 | Metric | Value |
 |--------|-------|
-| Training Examples | 1176 |
-| Test Accuracy | 94.9% |
-| Cross-Validation | 94.6% |
-| Model Size | 1.08 MB |
-| Training Time | ~3 sec |
-
-### Categories
-
-| Type | Examples | Type | Examples |
-|------|----------|------|----------|
-| crypto | 1088 | RSA | 31 |
-| Hash | 34 | ECC | 27 |
-| AES | 20 | XOR | 12 |
-| misc | 36 | DSA | 2 |
+| Training Examples | 1782 |
+| Test Accuracy | 79% |
+| Total Categories | 20+ |
+| Model Size | 3.6 MB |
+| Training Time | ~5 sec |
 
 ---
 
-## Adding New Challenges
+## Running Tests
 
-1. Edit `register_experiences.py`:
+```bash
+# Run all tests
+python tests/test_modules.py
 
-```python
-new_exp = SolvedChallengeExperience(
-    challenge_name="Challenge Name",
-    challenge_type="RSA",
-    attack_pattern="Attack Name",
-    solution_steps=["Step 1", "Step 2"],
-    flag_found="flag{...}"
-)
-storage.store_experience(new_exp)
+# With pytest
+python -m pytest tests/test_modules.py -v
 ```
 
-2. Run: `python register_experiences.py`
-
-3. Retrain: `python train_lightweight.py`
-
 ---
 
-## Supported Attacks
+## Adding Experiences
 
-| Type | Attacks |
-|------|---------|
-| **RSA** | Wiener, Fermat, Hastad, Common Factor, Bleichenbacher |
-| **XOR** | Known Plaintext, Frequency Analysis, Repeating Key |
-| **Hash** | Length Extension, Birthday Attack, Collision |
-| **AES** | Padding Oracle, ECB Detection, Bit Flipping |
-| **ECC** | Invalid Curve, Small Subgroup, Nonce Reuse |
+```python
+from src.learning.experience_storage import get_experience_storage
+
+storage = get_experience_storage()
+storage.store_experience(
+    challenge_name="Challenge Name",
+    challenge_type="RSA",
+    attack_pattern="Hastad Broadcast",
+    solution_steps=["Collect ciphertexts", "Apply CRT", "Take e-th root"],
+    flag_found="flag{...}"
+)
+```
 
 ---
 
