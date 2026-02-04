@@ -35,6 +35,7 @@ class AutoSolver:
         self.verbose = verbose
         self.classifier = None
         self.retriever = None
+        self.rag_solver = None  # NEW: Full solution retrieval
         self.solvers = {}
         self._load_components()
     
@@ -61,6 +62,14 @@ class AutoSolver:
             self._log("Experience retriever loaded")
         except Exception as e:
             self._log(f"Retriever not available: {e}", "warn")
+        
+        # Load RAG solver for full solution context
+        try:
+            from src.rag.rag_solver import get_rag_solver
+            self.rag_solver = get_rag_solver()
+            self._log("RAG solver loaded")
+        except Exception as e:
+            self._log(f"RAG solver not available: {e}", "warn")
         
         # Load solver modules
         try:
@@ -143,30 +152,45 @@ class AutoSolver:
         
         return {"type": "Unknown", "confidence": 0.0, "alternatives": []}
     
-    def retrieve(self, challenge_type: str, description: str, k: int = 3) -> List[Dict]:
+    def retrieve(self, challenge_type: str, description: str, code: str = "", k: int = 3) -> List[Dict]:
         """
-        Step 2: Retrieve similar solved challenges.
+        Step 2: Retrieve similar solved challenges with FULL solutions.
         
         Returns:
-            List of similar experiences with attack patterns
+            List of similar experiences with complete solution code and steps
         """
-        if not self.retriever:
-            return []
+        # Try RAG solver first (returns full solutions)
+        if self.rag_solver:
+            try:
+                contexts = self.rag_solver.get_solution_context(
+                    challenge_text=description,
+                    challenge_code=code,
+                    challenge_type=challenge_type,
+                    k=k
+                )
+                return [ctx.to_dict() for ctx in contexts]
+            except Exception as e:
+                self._log(f"RAG retrieval error: {e}", "warn")
         
-        try:
-            results = self.retriever.search_similar(description, top_k=k)
-            return [
-                {
-                    "name": r.challenge_name,
-                    "type": r.challenge_type,
-                    "attack": r.attack_pattern,
-                    "steps": r.solution_steps[:3] if hasattr(r, 'solution_steps') else []
-                }
-                for r in results
-            ]
-        except Exception as e:
-            self._log(f"Retrieval error: {e}", "warn")
-            return []
+        # Fallback to basic retriever
+        if self.retriever:
+            try:
+                results = self.retriever.get_similar_experiences(description, k=k)
+                return [
+                    {
+                        "name": r.challenge_name,
+                        "type": r.challenge_type,
+                        "attack": r.attack_pattern,
+                        "code": r.solution_code,  # FULL CODE
+                        "steps": r.solution_steps,
+                        "similarity": getattr(r, '_similarity', 0.5)
+                    }
+                    for r in results
+                ]
+            except Exception as e:
+                self._log(f"Retrieval error: {e}", "warn")
+        
+        return []
     
     def solve(self, 
               challenge_type: str,
@@ -291,14 +315,20 @@ class AutoSolver:
         if classification.get('alternatives'):
             print(f"   Alternatives: {', '.join(classification['alternatives'])}")
         
-        # Step 2: Retrieve similar
+        # Step 2: Retrieve similar (with FULL solutions)
         print("\n[STEP 2] Retrieving similar challenges...")
-        similar = self.retrieve(classification['type'], description + code)
+        similar = self.retrieve(classification['type'], description, code)
         
         if similar:
             print(f"   Found {len(similar)} similar challenges:")
             for s in similar[:3]:
-                print(f"   - {s['name']}: {s['attack']}")
+                sim_score = s.get('similarity', 0)
+                print(f"   - {s.get('name', 'Unknown')}: {s.get('attack', 'N/A')} ({sim_score:.0%} similar)")
+                # Show solution code preview if available
+                sol_code = s.get('code', '')
+                if sol_code:
+                    preview = sol_code[:80].replace('\n', ' ').strip()
+                    print(f"     Code: {preview}...")
         else:
             print("   No similar challenges found")
         
@@ -317,7 +347,7 @@ class AutoSolver:
         
         # Step 4: Solve
         print("\n[STEP 4] Attempting to solve...")
-        attack_hints = [s['attack'] for s in similar] if similar else []
+        attack_hints = [s.get('attack', '') for s in similar if s.get('attack')] if similar else []
         result = self.solve(classification['type'], params, attack_hints)
         
         elapsed = time.time() - start_time
@@ -326,13 +356,33 @@ class AutoSolver:
             print(f"\n{'='*60}")
             print(f"   FLAG FOUND: {result}")
             print(f"{'='*60}")
+            
+            # AUTO-TRAIN: Store this experience for future retrieval
+            if self.rag_solver:
+                try:
+                    self.rag_solver.store_success(
+                        challenge_name=file_path or "Manual Challenge",
+                        challenge_description=description[:500],
+                        challenge_type=classification['type'],
+                        source_code=code[:2000],
+                        attack_pattern=attack_hints[0] if attack_hints else classification['type'],
+                        solution_steps=["auto_classified", "auto_solved"],
+                        solution_code=f"# Auto-solved\n# Params: {params}",
+                        flag=result,
+                        solve_time=elapsed
+                    )
+                    print("[+] Experience stored for future learning")
+                except Exception as e:
+                    print(f"[!] Could not store experience: {e}")
         else:
             print("\n   Could not automatically solve.")
             print("   Suggestions:")
             print("   - Check extracted parameters")
             print("   - Try manual solver scripts in solver/")
             if similar:
-                print(f"   - Review similar challenge: {similar[0]['name']}")
+                print(f"   - Review similar challenge: {similar[0].get('name', 'N/A')}")
+                if similar[0].get('code'):
+                    print(f"   - Use solution code from: {similar[0].get('name')}")
         
         print(f"\n[*] Completed in {elapsed:.2f}s")
         
