@@ -1,0 +1,7 @@
+
+from sage.all import *
+
+p = 75649310163467338537242488401191577447135093741127329417060926665079335289551
+print(f"Factorizing p-1 for p={p}")
+f = (p-1).factor()
+print(f)
