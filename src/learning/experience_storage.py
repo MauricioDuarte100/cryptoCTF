@@ -272,9 +272,12 @@ class ExperienceStorage:
         desc_embedding = self._compute_embedding(full_text)
         experience.description_embedding = desc_embedding.tolist()
         
+        # Compute code embedding if solution code exists
+        code_embedding_bytes = None
         if experience.solution_code:
             code_embedding = self._compute_embedding(experience.solution_code)
             experience.code_embedding = code_embedding.tolist()
+            code_embedding_bytes = code_embedding.tobytes()
         
         # Store in SQLite
         with sqlite3.connect(self.db_path) as conn:
@@ -302,7 +305,7 @@ class ExperienceStorage:
                 experience.confidence_score,
                 experience.attempts_before_success,
                 desc_embedding.tobytes(),
-                experience.code_embedding if experience.code_embedding else None,
+                code_embedding_bytes,  # Fixed: serialize as bytes, not list
                 experience.created_at
             ))
             
