@@ -1,0 +1,199 @@
+"""
+Solver for Cosmic Challenge - LWE with weak parameters
+
+The challenge uses LWE with n=976 and sigma=2.3 (very small noise).
+
+Attack Strategy:
+1. The public key is pk = s @ A + 2*e where s, e are Gaussian with small sigma
+2. Since sigma is small, we can use lattice reduction to recover s
+
+For LWE with such small noise, the primal lattice attack works:
+- Construct a lattice from the public key
+- Use BKZ/LLL to find the short vector s
+
+Alternatively, since sigma is so small, we might be able to:
+- Guess the error terms (they're almost always in {-2,-1,0,1,2})
+- Solve a linear system
+
+Let's try the direct approach first: if the noise is negligible,
+pk ≈ s @ A (mod 2^16), and we can solve for s.
+"""
+
+import numpy as np
+from Crypto.Hash import SHAKE128
+
+# Regenerate A from the CRS (Common Reference String)
+n = 976
+shake = SHAKE128.new(b'defund')
+crs = shake.read(np.dtype(np.uint16).itemsize * n**2)
+A = np.frombuffer(crs, dtype=np.uint16).reshape((n, n))
+
+print("📊 Cosmic Challenge Solver")
+print(f"   n = {n}")
+print(f"   A shape: {A.shape}")
+
+# Check if we have local files
+import os
+
+pk_path = "challenges/cosmic/pk"
+ct_path = "challenges/cosmic/ct"
+
+if not os.path.exists(pk_path):
+    print(f"\n⚠️ No local pk file found at {pk_path}")
+    print("   This challenge likely requires downloading files from a server.")
+    print("   Please provide the pk and ct files.")
+    
+    # For now, let's demonstrate the attack with simulated data
+    print("\n🔧 Demonstrating attack with simulated data...")
+    
+    from random import SystemRandom
+    random = SystemRandom()
+    sigma = 2.3
+    
+    def gaussian():
+        return np.fromfunction(np.vectorize(lambda *_: round(random.gauss(0, sigma))), (n,)).astype(np.uint16)
+    
+    def keygen():
+        s = gaussian()
+        pk = s @ A + 2*gaussian()
+        sk = np.append(-s, 1).astype(np.uint16)
+        return pk, sk, s
+    
+    # Generate test keys
+    pk, sk, s_true = keygen()
+    print(f"   Generated test keys")
+    print(f"   s has {np.count_nonzero(s_true)} non-zero elements")
+    print(f"   s range: [{np.min(s_true.astype(np.int16))}, {np.max(s_true.astype(np.int16))}]")
+    
+    # Attack: Since pk = s @ A + 2*e, and e is small, try to recover s
+    # Method 1: Ignore the noise and solve s @ A ≈ pk
+    # This is a linear system over Z/2^16 Z
+    
+    # Actually, let's check if we can recover s by LLL on a small subset
+    # Or just verify the weak noise allows direct bit extraction
+    
+    # For decryption, we need to recover s such that:
+    # pk = s @ A + 2*e
+    # If we know s, we can decrypt: sk.dot(c) & 1 = b
+    
+    # Let's verify decryption works
+    def encrypt(pk, b):
+        e = gaussian()
+        return np.append(A @ e, pk @ e + b).astype(np.uint16)
+    
+    def decrypt(sk, c):
+        return sk.dot(c) & 1
+    
+    # Test
+    test_bit = 1
+    c = encrypt(pk, test_bit)
+    decrypted = decrypt(sk, c)
+    print(f"\n📊 Decryption test:")
+    print(f"   Original bit: {test_bit}, Decrypted: {decrypted}, Match: {test_bit == decrypted}")
+    
+    # Now the attack: try to recover s from pk and A
+    # Since pk = s @ A + 2*e over uint16, we have:
+    # pk mod 2 = (s @ A) mod 2  (since 2*e is even)
+    
+    # So the parity of pk reveals parity of s @ A!
+    # This means: (pk & 1) = (s @ A) & 1
+    
+    pk_parity = pk & 1  # n bits
+    
+    # For each bit of s, we have:
+    # sum(s[j] * A[j,i]) mod 2 = pk[i] mod 2 for all i
+    
+    # This is a linear system over GF(2)!
+    # s @ (A mod 2) = pk mod 2 (mod 2)
+    
+    A_mod2 = (A & 1).astype(np.uint8)
+    pk_mod2 = (pk & 1).astype(np.uint8)
+    
+    print(f"\n🔍 Parity attack:")
+    print(f"   A_mod2 shape: {A_mod2.shape}")
+    print(f"   pk_mod2 shape: {pk_mod2.shape}")
+    
+    # Solve s_parity @ A_mod2 = pk_mod2 over GF(2)
+    # This gives us the parity of s (s mod 2)
+    
+    # Use Gaussian elimination over GF(2)
+    # But this is underdetermined (n equations, n unknowns) and might not have unique solution
+    
+    # Better approach: The noise is so small that we can round off
+    # pk = s @ A + 2*e
+    # pk/2 ≈ (s @ A)/2 + e
+    # Since e ∈ {-2,-1,0,1,2} mostly, (pk - s @ A)/2 should be small
+    
+    # Let's try solving A^T @ x = pk^T using least squares
+    # and see if the result is close to -s
+    
+    # Actually, simpler: since A is large (976x976) and random,
+    # A @ A^T is likely invertible mod 2^16
+    # So we can compute (A @ A^T)^{-1} @ A @ pk^T to get an estimate of s
+    
+    # But matrix inversion mod 2^16 is tricky...
+    
+    # Let's try the lattice approach with a smaller subset
+    print(f"\n🔍 Trying lattice-based attack...")
+    
+    # Use fpylll for LLL if available
+    try:
+        from fpylll import IntegerMatrix, LLL, BKZ
+        print("   fpylll available!")
+        
+        # Construct lattice basis for LWE attack
+        # Standard primal attack: find (s, e) such that (s, e) @ [A^T | I] = pk
+        # Equivalently, find short vector in lattice generated by rows of:
+        # [A^T | I | pk^T]
+        # [0   | 0 | q   ]  (where q = 2^16)
+        
+        # For small dimensions, let's try a subset
+        m = 40  # Use subset of columns
+        
+        q = 2**16
+        
+        # Take subset of A and pk
+        A_sub = A[:m, :m].astype(int)
+        pk_sub = pk[:m].astype(int)
+        
+        # Build lattice for Kannan embedding
+        # Find x such that x @ A_sub ≈ pk_sub (mod q)
+        # Short x means we found s
+        
+        # ... This requires careful construction
+        
+        print("   Lattice attack would require careful implementation.")
+        print("   For this challenge, let's check if files are provided elsewhere.")
+        
+    except ImportError:
+        print("   fpylll not available. Install with: pip install fpylll")
+    
+else:
+    print(f"\n✅ Found pk file at {pk_path}")
+    
+    # Load the files
+    pk = np.fromfile(pk_path, dtype=np.uint16)
+    print(f"   pk shape: {pk.shape}")
+    
+    if os.path.exists(ct_path):
+        ct_data = np.fromfile(ct_path, dtype=np.uint16)
+        # Each ciphertext is n+1 elements
+        num_cts = len(ct_data) // (n + 1)
+        cts = ct_data.reshape((num_cts, n + 1))
+        print(f"   Number of ciphertexts: {num_cts}")
+        
+        # Attack: recover s using parity
+        # Then decrypt all bits
+        
+        # For now, let's try a simple approach:
+        # The last element of each ciphertext is pk @ e + b
+        # We can't directly get b without s
+        
+        # But if we can recover s...
+        # sk = [-s, 1]
+        # decrypt: sk @ c = -s @ (A @ e) + pk @ e + b
+        #        = -s @ A @ e + (s @ A + 2*noise) @ e + b
+        #        = 2*noise @ e + b
+        # Since noise and e are small, 2*noise @ e is even, so & 1 gives b
+        
+        print("\n⚠️ Need to implement s recovery to decrypt.")
