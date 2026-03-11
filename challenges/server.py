@@ -1,33 +1,47 @@
-import os
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+#!/usr/local/bin/python3
+import secrets
+from fastecdsa.curve import P256
+from fastecdsa.encoding.sec1 import SEC1Encoder
 
-flag = os.environ.get("FLAG", "ALPACA{*** REDACTED ***}")
+import snarg
+from add import int_to_bits
 
-ALPACA = chr(129433)  # "🦙"
-print(f"Welcome to my login service {ALPACA}")
+if __name__ == '__main__':
+	n = 64
 
-key = os.urandom(16)
+	with open('vk.bin', 'rb') as f:
+		st = snarg.vk_state(f)
 
-print(f"[DEBUG] key: {key.hex()}") # Oops!
+	streak = 0
+	while True:
+		a = secrets.randbits(n)
+		b = secrets.randbits(n)
+		print(f'what is {a} + {b}? (mod 2^64)')
 
-try:
-    ciphertext = bytes.fromhex(input("Enter your ciphertext (hex): "))
-    iv = bytes.fromhex(input("Enter your IV (hex): "))
+		while True:
+			c = int(input('answer: '))
+			assert 0 <= c < (1 << 64)
+			correct = c == (a + b) % (1 << n)
 
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    
-    padded_plaintext = cipher.decrypt(ciphertext)
-    plaintext = unpad(padded_plaintext, AES.block_size)
-    username = plaintext.decode()
+			proof_buf = bytes.fromhex(input('proof: '))
+			assert len(proof_buf) == 2 * 33
+			h1 = SEC1Encoder.decode_public_key(proof_buf[:33], P256)
+			h2 = SEC1Encoder.decode_public_key(proof_buf[33:], P256)
 
-    print(f"Welcome, {username}")
+			inputs = int_to_bits(a, n) + int_to_bits(b, n) + int_to_bits(c, n)
+			proof = (h1, h2)
+			valid = snarg.verify(inputs, st, proof)
 
-    if username == ALPACA * 5:  # username == "🦙🦙🦙🦙🦙"
-        print(f"Congratulations! Here is your flag: {flag}")
-    else:
-        print("Invalid username.")
-
-except Exception as e:
-    print(f"something went wrong: {e}")
-    exit(1)
+			if valid and correct:
+				print('correct! but that was obvious...')
+				streak = 0
+			elif valid and not correct:
+				print('huh?')
+				streak += 1
+				if streak >= 20:
+					print(open('flag.txt').read().strip())
+					exit()
+				break
+			else:
+				streak = 0
+				print('wrong...')
