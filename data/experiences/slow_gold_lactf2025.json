@@ -1,0 +1,75 @@
+{
+    "challenge_name": "Slow Gold - LACTF 2025",
+    "challenge_type": "ZK_Proof",
+    "attack_pattern": "Delta-Zero Linearization Attack on EMP-ZK",
+    "flag": "lactf{1_h0p3_y0u_l1v3_th1s_0ne_t0_th3_fullest}",
+    "description": "EMP-ZK arithmetic proof system with two critical bugs exploited for information leakage.",
+    "bugs": [
+        {
+            "name": "Broken Batched Multiplication Check",
+            "location": "emp-zk/emp-zk/emp-zk-arith/ostriple.h",
+            "details": "uni_hash_coeff_gen(chi, seed, 1) should be uni_hash_coeff_gen(chi, seed, task_n). With 1, only chi[0] is derived. Loop bounds 'for(uint32_t i = start + task_n - 1; i < start + task_n; ++i)' makes loop execute exactly once, checking only the last multiplication gate per batch."
+        },
+        {
+            "name": "Delta Can Be Forced To Zero",
+            "location": "delta_gen() in ostriple.h",
+            "details": "Nothing prevents verifier from choosing delta = 0. With delta=0, MAC relation mac = key + delta*value becomes mac = key, converting quadratic check to linear relation."
+        }
+    ],
+    "attack_steps": [
+        "Patch verifier (client) to force delta = 0 in delta_gen()",
+        "Add logging to record ka, kb, kc, seed, V from the one-gate check",
+        "Connect 10 times with X = 0, 1, ..., 9",
+        "Each connection leaks equation: kb*g(X) + ka*(last + X) = V/seed + kc (mod p)",
+        "Where g(X) = prod_{i=0..8}(vec2[i] + X) = c0 + c1*X + ... + c8*X^8 + X^9",
+        "Rearrange to linear system in 10 unknowns (c0..c8, last)",
+        "Solve 10x10 system over GF(2^61-1) using Gaussian elimination",
+        "Factor polynomial g(X) over GF(p) to find roots",
+        "Roots are -vec2[i] for i=0..8, negate to get vec2 elements",
+        "Add 'last' (vec2[9]) to complete the 10-element multiset",
+        "Submit multiset as guess for vec1 (works because vec1 is permutation of vec2)"
+    ],
+    "math_details": {
+        "field": "GF(2^61 - 1)",
+        "mac_relation": "mac = key + delta * value (mod p)",
+        "with_delta_zero": "mac = key (linear, no quadratic term)",
+        "gate_check_equation": "kb*a + ka*b = (V/seed) + kc (mod p)",
+        "polynomial_form": "g(X) = prod_{i=0..8}(vec2[i] + X) = monic degree-9 poly",
+        "linear_system_unknowns": [
+            "c0",
+            "c1",
+            "c2",
+            "c3",
+            "c4",
+            "c5",
+            "c6",
+            "c7",
+            "c8",
+            "last"
+        ],
+        "coefficient_for_cj": "kb * X^j",
+        "coefficient_for_last": "ka",
+        "rhs": "V * inv(seed) + kc - ka*X - kb*X^9"
+    },
+    "tools_used": [
+        "SageMath (polynomial factoring)",
+        "Python (Gaussian elimination)",
+        "Docker (EMP-ZK client compilation)"
+    ],
+    "keywords": [
+        "emp-zk",
+        "zero-knowledge",
+        "VOLE",
+        "delta-zero",
+        "linearization",
+        "polynomial-factoring",
+        "gaussian-elimination",
+        "MAC-forgery",
+        "information-leakage",
+        "ostriple.h",
+        "uni_hash_coeff_gen"
+    ],
+    "ctf": "LA CTF 2025",
+    "category": "crypto",
+    "difficulty": "hard"
+}
