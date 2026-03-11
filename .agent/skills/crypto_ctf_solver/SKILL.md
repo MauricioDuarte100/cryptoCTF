@@ -38,8 +38,10 @@ Create a standalone solver script in `solver/solve_<challenge_name>.py`.
   - `Attack Logic`: Implement the mathematical attack clearly.
   - `Output`: Print the final flag.
 
-### Phase 4: Training (Crucial)
+### Phase 4: Training & Cleanup (Crucial)
 After solving the challenge, **you MUST add the experience to the RAG database**. This allows the AI to learn and solve similar future challenges instantly.
+
+Once trained, **you MUST delete** the challenge workspace folder and the temporary solver script to keep the repository clean.
 
 ```bash
 python add_experience.py \
@@ -51,6 +53,12 @@ python add_experience.py \
   --description "Brief explanation of the vulnerability and solution"
 ```
 
+**Cleanup Step:**
+```bash
+rm -rf challenges/<challenge_name>
+rm solver/solve_<challenge_name>.py
+```
+
 ## 2. Tools & Scripts
 
 | Script | Purpose |
@@ -60,11 +68,22 @@ python add_experience.py \
 | `solver/modules/*.py` | Library of reusable attack modules (RSA, XOR, etc.). |
 | `src/rag/rag_solver.py` | Core RAG interface for programmatic queries. |
 
-## 3. Best Practices
+## 3. Post-Mortem Mandatory Rules (Anti-Hallucination)
+
+**1. STRICT SAGEMATH / DOCKER PROTOCOL:**
+You have an MCP tool called `execute_sage_code`. Its internal description says it uses a Docker container. **DO NOT EVER ATTEMPT TO CREATE, RUN, OR MANAGE YOUR OWN DOCKER CONTAINERS.**
+- When a challenge involves LLL, Coppersmith, Lattices, ECC, or Multivariate Polynomials, **ALWAYS write a Sage script as a string and pass it directly to `execute_sage_code`**.
+- Do NOT use Python (sympy/gmpy2) for heavy algebra if Sage is an option.
+- **CRITICAL**: After `execute_sage_code` returns success or failure, you must call `run_command` to execute `.\cleanup_docker.ps1`. **DO NOTHING ELSE WITH DOCKER.**
+
+**2. STRICT RAG BEHAVIOR:**
+- When querying `rag.get_solution_context()`, if the system returns 0 results, **DO NOT INVENT ATTACKS**. Acknowledge the absence of past experience and proceed with pure analytical research.
+
+## 4. Best Practices
 
 - **One Script per Challenge**: Keep solvers isolated in `solver/` with descriptive names.
 - **Explain the Math**: In the `add_experience.py` description, explain *why* the attack works (e.g., "m^e < n allowing e-th root").
-- **Check Precision**: For math-heavy challenges, use `Decimal` or `gmpy2` to avoid floating-point errors.
+- **Check Precision**: For math-heavy challenges, use `Decimal` or `gmpy2` to avoid floating-point errors (only if Sage is not appropriate).
 - **Side-Channel**: For timing/power attacks, collect data first, then analyze off-line.
 
 ## 4. Example: Solving an RSA Challenge
@@ -76,3 +95,4 @@ python add_experience.py \
    ```bash
    python add_experience.py --name "Simple Cube Root" --type RSA --attack "Low Public Exponent" --code solver/solve_rsa_cube.py
    ```
+5. **Clean**: Delete `challenges/rsa_cube` and `solver/solve_rsa_cube.py`.
