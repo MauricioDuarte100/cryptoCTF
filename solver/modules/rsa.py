@@ -13,49 +13,98 @@ class RSASolver:
     def __init__(self):
         pass
 
-    def solve(self, n, e, c, **kwargs):
+    def solve(self, n, e, c, attack_order=None, **kwargs):
         """
         Attempts to solve RSA given n, e, c.
-        kwargs can contain 'n_list', 'c_list' for broadcast attacks,
-        or 'e1', 'e2', 'c1', 'c2' for common modulus.
+        
+        Args:
+            n, e, c: RSA parameters
+            attack_order: Optional list of attack names to try in order
+                          (from EarlyExitChecker). Skips attacks not in list.
+            kwargs: extra params (n_list, c_list for broadcast, etc.)
         """
-        print(f"[*] Attempting RSA solve with n={n}, e={e}, c={c}")
+        print(f"[*] Attempting RSA solve with n ({n.bit_length()} bits), e={e}")
         
-        # 1. Small Exponent Attack (e=3)
-        if e == 3:
-            print("[*] Trying Cube Root Attack (e=3)...")
-            m, exact = gmpy2.iroot(c, 3)
-            if exact:
-                res = safe_long_to_bytes(m)
-                if res:
-                    print(f"[+] Solved with Cube Root: {res}")
-                    return res.decode(errors='ignore')
-
-        # 2. Wiener's Attack (Small d)
-        print("[*] Trying Wiener's Attack...")
-        res = self._wiener_attack(n, e, c)
-        if res: return res
-
-        # 3. Fermat Factorization (p close to q)
-        print("[*] Trying Fermat Factorization...")
-        res = self._fermat_factorization(n, e, c)
-        if res: return res
-
-        # 4. Small N Factorization
-        if n < 2**100:
-            print("[*] Trying Small N Factorization...")
-            for i in range(2, 100000):
-                if n % i == 0:
-                    p = i
-                    q = n // i
-                    return self._decrypt_with_factors(n, e, c, p, q)
+        # Map attack names to methods
+        attack_methods = {
+            "small_e_root": self._try_small_e,
+            "wiener": self._try_wiener,
+            "fermat": self._try_fermat,
+            "trial_division": self._try_trial_div,
+            "pollard_p1": self._try_pollard_p1,
+            "pollard_rho": self._try_pollard_rho,
+            "hastad_broadcast": lambda n, e, c: None,  # needs extra params
+            "common_modulus": lambda n, e, c: None,     # needs extra params
+            "crt_leak": lambda n, e, c: None,           # needs dp/dq
+        }
         
-        # 5. Pollard p-1 (smooth p-1)
-        print("[*] Trying Pollard p-1...")
-        res = self._pollard_p1(n, e, c)
-        if res: return res
+        if attack_order:
+            # Use the optimized order from EarlyExitChecker
+            for attack_name in attack_order:
+                method = attack_methods.get(attack_name)
+                if method:
+                    print(f"[*] Trying {attack_name}...")
+                    result = method(n, e, c)
+                    if result:
+                        return result
+        else:
+            # Fallback: original sequential order
+            if e <= 5 and e > 1:
+                print("[*] Trying Small E Root Attack...")
+                res = self._try_small_e(n, e, c)
+                if res: return res
+
+            print("[*] Trying Wiener's Attack...")
+            res = self._try_wiener(n, e, c)
+            if res: return res
+
+            if n.bit_length() <= 512:
+                print("[*] Trying Fermat Factorization...")
+                res = self._try_fermat(n, e, c)
+                if res: return res
+
+            if n < 2**256:
+                print("[*] Trying Trial Division...")
+                res = self._try_trial_div(n, e, c)
+                if res: return res
+
+            print("[*] Trying Pollard p-1...")
+            res = self._try_pollard_p1(n, e, c)
+            if res: return res
                     
         return None
+    
+    def _try_small_e(self, n, e, c):
+        """Small exponent attack: direct e-th root of c."""
+        if e > 17:
+            return None
+        m, exact = gmpy2.iroot(c, e)
+        if exact:
+            res = safe_long_to_bytes(m)
+            if res:
+                print(f"[+] Solved with e-th root (e={e})")
+                return res.decode(errors='ignore')
+        return None
+    
+    def _try_wiener(self, n, e, c):
+        return self._wiener_attack(n, e, c)
+    
+    def _try_fermat(self, n, e, c):
+        return self._fermat_factorization(n, e, c)
+    
+    def _try_trial_div(self, n, e, c):
+        for i in range(2, 100000):
+            if n % i == 0:
+                p = i
+                q = n // i
+                return self._decrypt_with_factors(n, e, c, p, q)
+        return None
+    
+    def _try_pollard_p1(self, n, e, c):
+        return self._pollard_p1(n, e, c)
+    
+    def _try_pollard_rho(self, n, e, c):
+        return self.pollard_rho(n, e, c)
 
     def _decrypt_with_factors(self, n, e, c, p, q):
         try:
