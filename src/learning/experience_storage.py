@@ -11,12 +11,12 @@ from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
+import os
 
-try:
-    from sentence_transformers import SentenceTransformer
-    HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
-    HAS_SENTENCE_TRANSFORMERS = False
+# Identify the project root based on this script's location
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# SentenceTransformers import moved inside the embedder property to save memory and boot time.
 
 try:
     import faiss
@@ -105,10 +105,15 @@ class ExperienceStorage:
         Initialize experience storage.
         
         Args:
-            db_path: Path to SQLite database
+            db_path: Path to SQLite database (will be resolved against project root)
             model_name: Sentence transformer model for embeddings
         """
-        self.db_path = Path(db_path)
+        # Ensure db_path is absolute to the project root to prevent leaking duplicates in cwd
+        if not os.path.isabs(db_path):
+            self.db_path = PROJECT_ROOT / db_path
+        else:
+            self.db_path = Path(db_path)
+            
         self.model_name = model_name
         self._embedder = None
         self._faiss_index = None
@@ -121,10 +126,12 @@ class ExperienceStorage:
     def embedder(self):
         """Lazy load the sentence transformer model."""
         if self._embedder is None:
-            if not HAS_SENTENCE_TRANSFORMERS:
-                return None
             try:
+                from sentence_transformers import SentenceTransformer
                 self._embedder = SentenceTransformer(self.model_name)
+            except ImportError as e:
+                print(f"⚠️ Warning: sentence_transformers not installed: {e}")
+                return None
             except Exception as e:
                 print(f"⚠️ Warning: Could not load SentenceTransformer: {e}")
                 return None
@@ -205,6 +212,12 @@ class ExperienceStorage:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_exp_type ON experiences(challenge_type)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_exp_attack ON experiences(attack_pattern)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_exp_success ON experiences(solution_successful)")
+            
+            # Migration: add times_helpful column if not present
+            try:
+                cursor.execute("ALTER TABLE experiences ADD COLUMN times_helpful INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # column already exists
             
             conn.commit()
     
@@ -380,6 +393,182 @@ class ExperienceStorage:
         # Sort by similarity and return top k
         experiences.sort(key=lambda x: getattr(x, '_similarity', 0), reverse=True)
         return experiences[:k]
+    
+    def get_similar_experiences_reranked(
+        self, query: str, k: int = 5,
+        challenge_type: str = None,
+        query_params: Dict[str, Any] = None
+    ) -> List[SolvedChallengeExperience]:
+        """
+        Find similar solved challenges with domain-aware reranking.
+        
+        First retrieves top candidates from FAISS, then applies
+        domain-specific scoring bonuses.
+        
+        Args:
+            query: Query text (challenge description, code, etc.)
+            k: Number of similar experiences to return
+            challenge_type: Optional filter/bonus by challenge type
+            query_params: Extracted params from the new challenge
+                          (e.g. {"n_bits": 2048, "e": 3, "attack_pattern": "small_e"})
+        
+        Returns:
+            List of similar experiences, sorted by reranked score
+        """
+        # Step 1: Get broad FAISS results (fetch more than needed)
+        candidates = self.get_similar_experiences(
+            query=query,
+            k=k * 3,  # overretrieve for reranking
+            challenge_type=None  # don't filter yet, let reranker bonus it
+        )
+        
+        if not candidates:
+            return []
+        
+        # Step 2: Rerank with domain scoring
+        reranked = self.rerank_results(
+            candidates, challenge_type, query, query_params or {}
+        )
+        
+        return reranked[:k]
+    
+    def rerank_results(
+        self,
+        experiences: List[SolvedChallengeExperience],
+        target_type: str = None,
+        query: str = "",
+        query_params: Dict[str, Any] = None
+    ) -> List[SolvedChallengeExperience]:
+        """
+        Rerank FAISS results using domain-specific scoring.
+        
+        Scoring bonuses:
+        - Type match: x1.5 if challenge_type matches
+        - Attack pattern keyword match: x1.3
+        - Battle-tested: x(1 + 0.1 * times_helpful)
+        - Structural similarity: bonus for matching n size, e value, etc.
+        
+        Args:
+            experiences: Pre-filtered candidates from FAISS
+            target_type: Expected challenge type (RSA, AES, etc.)
+            query: Original query text
+            query_params: Extracted parameters from the new challenge
+        
+        Returns:
+            Reranked list of experiences
+        """
+        query_params = query_params or {}
+        query_lower = query.lower()
+        
+        # Load times_helpful for each candidate
+        helpful_map = self._get_helpful_counts(
+            [exp.challenge_id for exp in experiences]
+        )
+        
+        for exp in experiences:
+            base_score = getattr(exp, '_similarity', 0.5)
+            multiplier = 1.0
+            
+            # 1. Type match bonus
+            if target_type and exp.challenge_type == target_type:
+                multiplier *= 1.5
+            elif target_type and exp.challenge_type != target_type:
+                multiplier *= 0.7  # penalty for type mismatch
+            
+            # 2. Attack pattern keyword bonus
+            if exp.attack_pattern and exp.attack_pattern.lower() in query_lower:
+                multiplier *= 1.3
+            
+            # 3. Battle-tested bonus
+            helpful = helpful_map.get(exp.challenge_id, 0)
+            if helpful > 0:
+                multiplier *= (1.0 + 0.1 * min(helpful, 10))  # cap at 2x
+            
+            # 4. Structural similarity bonus
+            struct_bonus = self._structural_similarity(
+                exp, query_params
+            )
+            multiplier *= (1.0 + struct_bonus)
+            
+            exp._similarity = base_score * multiplier
+        
+        # Re-sort by updated score
+        experiences.sort(key=lambda x: getattr(x, '_similarity', 0), reverse=True)
+        return experiences
+    
+    def _structural_similarity(
+        self,
+        exp: SolvedChallengeExperience,
+        query_params: Dict[str, Any]
+    ) -> float:
+        """
+        Compute structural similarity bonus [0.0 - 0.5] based on parameter matching.
+        
+        Checks: n bit-length similarity, same e value, same AES mode, etc.
+        """
+        bonus = 0.0
+        
+        if not query_params:
+            return 0.0
+        
+        # Parse experience's source files for structural features
+        exp_code = ""
+        for f in (exp.source_files or []):
+            exp_code += f.get("content", "") + "\n"
+        exp_code += exp.solution_code or ""
+        exp_lower = exp_code.lower()
+        
+        # RSA: same e value
+        q_e = query_params.get("e") or query_params.get("e_bits")
+        if q_e and str(q_e) in exp_lower:
+            bonus += 0.15
+        
+        # RSA: similar n bit length (within 256 bits)
+        q_n_bits = query_params.get("n_bits", 0)
+        if q_n_bits > 0:
+            import re
+            n_match = re.search(r'n\s*=\s*(\d+)', exp_code)
+            if n_match:
+                exp_n_bits = int(n_match.group(1)).bit_length()
+                if abs(q_n_bits - exp_n_bits) <= 256:
+                    bonus += 0.15
+        
+        # AES: same mode
+        q_mode = str(query_params.get("mode", "")).lower()
+        if q_mode and q_mode in exp_lower:
+            bonus += 0.2
+        
+        return min(bonus, 0.5)  # cap bonus at 0.5
+    
+    def _get_helpful_counts(self, exp_ids: List[str]) -> Dict[str, int]:
+        """Get times_helpful counts for a batch of experience IDs."""
+        if not exp_ids:
+            return {}
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in exp_ids)
+            try:
+                cursor.execute(
+                    f"SELECT id, times_helpful FROM experiences WHERE id IN ({placeholders})",
+                    exp_ids
+                )
+                return {row[0]: row[1] or 0 for row in cursor.fetchall()}
+            except sqlite3.OperationalError:
+                return {}
+    
+    def increment_helpful(self, experience_id: str) -> None:
+        """Mark an experience as having helped solve a new challenge."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    "UPDATE experiences SET times_helpful = COALESCE(times_helpful, 0) + 1 WHERE id = ?",
+                    (experience_id,)
+                )
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # column may not exist yet
     
     def get_experience(self, experience_id: str) -> Optional[SolvedChallengeExperience]:
         """Get a specific experience by ID."""
