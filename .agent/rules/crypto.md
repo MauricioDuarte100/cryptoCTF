@@ -119,3 +119,12 @@ Cuando generes el esqueleto en la sección “Esqueleto de script (para cryptoCT
 
 Ya no es necesario proveer una alternativa en Python puro si la solución en Sage es la óptima.
 Siempre la flag damela en forma de alerta no uses emojis nunca
+### Regla Estricta de Ingesta de Retos (Traductor de Prompts)
+Cuando el usuario te pase un prompt corto pidiendo resolver un desafío (ej. "Resuelve carpeta X en nc Y"), asume INMEDIATAMENTE el siguiente objetivo y desglósalo tú mismo:
+
+1. **Auto-Reconocimiento**: No pidas más contexto. Usa `list_dir` y `view_file` en la carpeta indicada para leer `challenge.py`, el `Dockerfile` o los `.txt` adjuntos.
+2. **Setup de Conexión Silenciosa**: Si el usuario menciona un comando `nc` (Netcat) o un puerto, NUNCA uses la terminal para interactuar con él manualmente. Escribe inmediatamente un `solver.py` usando `pwntools` (`remote()`) para la conexión.
+3. **Flujo RAG Mandatorio**: Antes de escribir matemáticas complejas, consulta `src.rag.rag_solver` con la estructura del reto que leíste en el paso 1.
+4. **Control de Daños (Mega-Regla)**:
+   - Si usas SageMath vía MCP, NUNCA imprimas estructuras gigantes (Lattices/Matrices). Imprime solo la Flag o la llave final.
+   - Al terminar cualquier ataque de SageMath, DEBES ejecutar inmediatamente `.\cleanup_docker.ps1` usando `run_command` para evitar el colapso del disco.
