@@ -69,7 +69,8 @@ class RAGSolver:
         challenge_text: str, 
         challenge_code: str = "",
         challenge_type: str = None,
-        k: int = 3
+        k: int = 3,
+        query_params: dict = None
     ) -> List[SolutionContext]:
         """
         Get full solution context from similar past challenges.
@@ -79,6 +80,8 @@ class RAGSolver:
             challenge_code: Challenge source code
             challenge_type: Optional pre-classified type for filtering
             k: Number of similar solutions to return
+            query_params: Optional extracted crypto params for reranking
+                          (e.g. {"n_bits": 2048, "e": 3, "mode": "CBC"})
             
         Returns:
             List of SolutionContext with complete solution info
@@ -89,12 +92,21 @@ class RAGSolver:
         # Build query from description + code
         query = f"{challenge_text}\n{challenge_code}"
         
-        # Get similar experiences
-        similar = self.storage.get_similar_experiences(
-            query=query,
-            k=k,
-            challenge_type=challenge_type
-        )
+        # Use reranked retrieval if query_params available
+        if query_params and hasattr(self.storage, 'get_similar_experiences_reranked'):
+            similar = self.storage.get_similar_experiences_reranked(
+                query=query,
+                k=k,
+                challenge_type=challenge_type,
+                query_params=query_params
+            )
+        else:
+            # Fallback to basic retrieval
+            similar = self.storage.get_similar_experiences(
+                query=query,
+                k=k,
+                challenge_type=challenge_type
+            )
         
         contexts = []
         for exp in similar:
@@ -128,16 +140,16 @@ class RAGSolver:
             Formatted prompt string for AI
         """
         prompt_parts = [
-            "# Nuevo Desafio CTF",
+            "# 🎯 Nuevo Desafío CTF",
             "",
-            "## Descripcion",
+            "## Descripción del Desafío",
             challenge_text,
             "",
         ]
         
         if challenge_code:
             prompt_parts.extend([
-                "## Codigo del Challenge",
+                "## Código Fuente del Challenge (`challenge.py`)",
                 "```python",
                 challenge_code[:2000],  # Limit code length
                 "```",
@@ -148,36 +160,45 @@ class RAGSolver:
             prompt_parts.extend([
                 "---",
                 "",
-                "# Soluciones Similares Encontradas",
+                "# 🧠 Contexto de Soluciones Anteriores (RAG)",
                 "",
-                "Los siguientes retos similares fueron resueltos anteriormente.",
-                "Usa estos como referencia para adaptar la solucion:",
+                "> **Instrucción:** Los siguientes retos **muy similares** ya fueron resueltos en el pasado.",
+                "> Usa este conocimiento empírico para adaptar la solución al desafío actual. ¡No empieces desde cero!",
                 "",
             ])
             
             for i, sol in enumerate(similar_solutions, 1):
                 prompt_parts.extend([
-                    f"## {i}. {sol.challenge_name} (Similaridad: {sol.similarity_score:.0%})",
+                    f"## 📚 Experiencia {i}: {sol.challenge_name} (Similitud: {sol.similarity_score:.0%})",
                     "",
-                    f"**Tipo:** {sol.challenge_type}",
-                    f"**Ataque:** {sol.attack_pattern}",
+                    f"- **Tipo de Reto:** `{sol.challenge_type}`",
+                    f"- **Patrón de Ataque:** `{sol.attack_pattern}`",
                     "",
                 ])
                 
                 if sol.solution_steps:
-                    prompt_parts.append("**Pasos:**")
+                    prompt_parts.append("### Resumen de Pasos Lógicos")
                     for step in sol.solution_steps[:5]:
-                        prompt_parts.append(f"- {step}")
+                        prompt_parts.append(f"1. {step}")
                     prompt_parts.append("")
                 
                 if sol.solution_code:
                     prompt_parts.extend([
-                        "**Codigo de Solucion:**",
+                        "### Código de la Solución Anterior",
                         "```python",
                         sol.solution_code[:1500],
                         "```",
                         "",
                     ])
+                    
+            prompt_parts.extend([
+                "---",
+                "## 🛑 Reglas de Limpieza Post-Resolución",
+                "Cuando encuentres la Flag y resuelvas el reto, **DEBES HACER LO SIGUIENTE**:",
+                "1. Entrenar al RAG ejecutando: `python add_experience.py` con los datos correspondientes.",
+                "2. Borrar todos los scripts sueltos y carpetas usadas para este reto (`challenges/NombreReto` y cualquier `.py` o `.sage` temporal en la raíz o en `solver/`) para no dejar basura en el repositorio Git.",
+                ""
+            ])
         
         return "\n".join(prompt_parts)
     
