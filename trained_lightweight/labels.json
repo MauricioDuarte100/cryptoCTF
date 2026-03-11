@@ -1,13 +1,13 @@
 [
-  "Block Cipher",
-  "Finite Fields",
-  "Multi-Layer Crypto",
-  "Classical Cipher",
-  "RSA",
+  "Symmetric/XOR",
   "Stream Cipher",
   "AES-GCM",
+  "Block Cipher",
+  "Classical Cipher",
   "RSA/HNP",
-  "VDF",
+  "RSA",
+  "Multi-Layer Crypto",
   "Number Theory",
-  "Symmetric/XOR"
+  "Finite Fields",
+  "VDF"
 ]
