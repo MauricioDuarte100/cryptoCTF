@@ -64,6 +64,9 @@ When the AI solves a challenge in your IDE:
 python add_experience.py --name "ChallengeNameFromCTF" --type RSA --attack "Attack Used" --code solve.py --flag "flag{...}"
 ```
 
+4. **Clean the Workspace**:
+Delete the challenge source files and your `solve.py` script to keep the Git workspace clean, as the solution is now safely stored in the `ctf_experiences.db`.
+
 ## Example: Training After Solving "Baby RSA"
 
 ```bash
