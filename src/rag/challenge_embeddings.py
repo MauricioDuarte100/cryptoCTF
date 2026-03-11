@@ -9,11 +9,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional, Any, Tuple
 from pathlib import Path
 
-try:
-    from sentence_transformers import SentenceTransformer
-    HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
-    HAS_SENTENCE_TRANSFORMERS = False
+import importlib.util
+HAS_SENTENCE_TRANSFORMERS = importlib.util.find_spec("sentence_transformers") is not None
 
 try:
     import faiss
@@ -51,16 +48,18 @@ class ChallengeEmbedder:
         self._code_model = None
     
     @property
-    def text_model(self) -> SentenceTransformer:
+    def text_model(self) -> Any:
         """Lazy load text embedding model."""
         if self._text_model is None:
+            from sentence_transformers import SentenceTransformer
             self._text_model = SentenceTransformer(self.config.text_model)
         return self._text_model
     
     @property
-    def code_model(self) -> SentenceTransformer:
+    def code_model(self) -> Any:
         """Lazy load code embedding model."""
         if self._code_model is None:
+            from sentence_transformers import SentenceTransformer
             if self.config.use_code_model:
                 self._code_model = SentenceTransformer(self.config.code_model)
             else:
