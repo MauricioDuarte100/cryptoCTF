@@ -96,6 +96,26 @@ class AutoSolver:
         except:
             pass
         
+        try:
+            from solver.modules.ecdsa import ECDSASolver
+            self.solvers["ECDSA"] = ECDSASolver()
+        except:
+            pass
+        
+        try:
+            from solver.modules.aes import AESSolver
+            self.solvers["AES"] = AESSolver()
+        except:
+            pass
+        
+        # Load param extractor
+        self.extractor = None
+        try:
+            from solver.core.param_extractor import get_param_extractor
+            self.extractor = get_param_extractor()
+        except Exception as e:
+            self._log(f"Param extractor not available: {e}", "warn")
+        
         self._log(f"Loaded {len(self.solvers)} solver modules")
     
     def classify(self, description: str, code: str = "") -> Dict[str, Any]:
@@ -152,9 +172,10 @@ class AutoSolver:
         
         return {"type": "Unknown", "confidence": 0.0, "alternatives": []}
     
-    def retrieve(self, challenge_type: str, description: str, code: str = "", k: int = 3) -> List[Dict]:
+    def retrieve(self, challenge_type: str, description: str, code: str = "", k: int = 3, query_params: Dict = None) -> List[Dict]:
         """
         Step 2: Retrieve similar solved challenges with FULL solutions.
+        Uses reranked retrieval when query_params are available.
         
         Returns:
             List of similar experiences with complete solution code and steps
@@ -166,7 +187,8 @@ class AutoSolver:
                     challenge_text=description,
                     challenge_code=code,
                     challenge_type=challenge_type,
-                    k=k
+                    k=k,
+                    query_params=query_params
                 )
                 return [ctx.to_dict() for ctx in contexts]
             except Exception as e:
@@ -213,13 +235,30 @@ class AutoSolver:
             self._log(f"No solver for type: {challenge_type}", "warn")
             return None
         
+        # Get early-exit attack ordering if extractor available
+        attack_order = []
+        try:
+            from solver.core.param_extractor import EarlyExitChecker
+            checker = EarlyExitChecker()
+            if challenge_type == "RSA":
+                attack_order = checker.rsa_attacks_order(params)
+                self._log(f"RSA attack order: {attack_order}")
+            elif challenge_type == "ECDSA":
+                attack_order = checker.ecdsa_attacks_order(params)
+                self._log(f"ECDSA attack order: {attack_order}")
+            elif challenge_type == "AES":
+                attack_order = checker.aes_attacks_order(params)
+                self._log(f"AES attack order: {attack_order}")
+        except ImportError:
+            pass
+        
         try:
             if challenge_type == "RSA":
                 n = params.get("n")
                 e = params.get("e")
                 c = params.get("c")
                 if n and e and c:
-                    result = solver.solve(n, e, c)
+                    result = solver.solve(n, e, c, attack_order=attack_order)
                     if result:
                         return result
             
@@ -231,9 +270,32 @@ class AutoSolver:
                     if result:
                         return result
             
+            elif challenge_type == "ECDSA":
+                ecdsa_params = params.get("_ecdsa", {})
+                sigs = ecdsa_params.get("signatures", [])
+                curve_order = ecdsa_params.get("curve_order")
+                if sigs and len(sigs) >= 2 and ecdsa_params.get("nonce_reuse_detected"):
+                    r = sigs[0][0]
+                    s1, s2 = sigs[0][1], sigs[1][1]
+                    z_vals = ecdsa_params.get("z_values", [0, 0])
+                    if len(z_vals) >= 2 and curve_order:
+                        result = solver.nonce_reuse_attack(r, s1, s2, z_vals[0], z_vals[1], curve_order)
+                        if result is not None:
+                            return f"Private key: {result}"
+            
             elif challenge_type == "ECC":
-                # ECC solver needs curve params
-                pass
+                ecc = params.get("_ecc", {})
+                if ecc.get("G") and ecc.get("Q") and ecc.get("p") and ecc.get("a") is not None:
+                    result = solver.solve(
+                        ecc["p"], ecc.get("a", 0), ecc.get("b", 0),
+                        ecc["G"], ecc["Q"]
+                    )
+                    if result:
+                        return result
+            
+            elif challenge_type == "AES":
+                self._log("AES attacks require oracle functions (interactive)", "warn")
+                self._log(f"Detected mode: {params.get('_aes', {}).get('mode', 'Unknown')}")
             
         except Exception as e:
             self._log(f"Solve error: {e}", "error")
@@ -241,29 +303,43 @@ class AutoSolver:
         return None
     
     def extract_params(self, code: str) -> Dict[str, Any]:
-        """Extract cryptographic parameters from code/text."""
+        """
+        Extract cryptographic parameters from code/text.
+        Uses CryptoParamExtractor for robust multi-format parsing.
+        """
+        if self.extractor:
+            try:
+                full_result = self.extractor.extract_all(code)
+                # Build flat params for backward compat
+                params = dict(full_result.get("raw_params", {}))
+                # Attach section data for type-specific solvers
+                params["_rsa"] = full_result.get("rsa", {})
+                params["_ecc"] = full_result.get("ecc", {})
+                params["_ecdsa"] = full_result.get("ecdsa", {})
+                params["_aes"] = full_result.get("aes", {})
+                params["_hash"] = full_result.get("hash", {})
+                params["_lattice"] = full_result.get("lattice", {})
+                params["_detected_type"] = full_result.get("detected_type", "Unknown")
+                if full_result.get("hex_values"):
+                    params["hex_values"] = full_result["hex_values"]
+                return params
+            except Exception as e:
+                self._log(f"Extractor error, falling back to basic: {e}", "warn")
+        
+        # Fallback: basic regex extraction
+        return self._extract_params_basic(code)
+    
+    def _extract_params_basic(self, code: str) -> Dict[str, Any]:
+        """Legacy basic regex extraction (fallback)."""
         import re
-        
         params = {}
-        
-        # RSA parameters
-        n_match = re.search(r'n\s*=\s*(\d+)', code)
-        if n_match:
-            params["n"] = int(n_match.group(1))
-        
-        e_match = re.search(r'e\s*=\s*(\d+)', code)
-        if e_match:
-            params["e"] = int(e_match.group(1))
-        
-        c_match = re.search(r'c\s*=\s*(\d+)', code)
-        if c_match:
-            params["c"] = int(c_match.group(1))
-        
-        # Try to find hex-encoded values
-        hex_matches = re.findall(r'["\']([0-9a-fA-F]{16,})["\']', code)
+        for var in ['n', 'e', 'c', 'p', 'q', 'd']:
+            match = re.search(rf'{var}\s*=\s*(\d+)', code)
+            if match:
+                params[var] = int(match.group(1))
+        hex_matches = re.findall(r'["\']([0-9a-fA-F]{{16,}})["\']', code)
         if hex_matches:
             params["hex_values"] = hex_matches
-        
         return params
     
     def run_pipeline(self, 
@@ -315,9 +391,38 @@ class AutoSolver:
         if classification.get('alternatives'):
             print(f"   Alternatives: {', '.join(classification['alternatives'])}")
         
-        # Step 2: Retrieve similar (with FULL solutions)
-        print("\n[STEP 2] Retrieving similar challenges...")
-        similar = self.retrieve(classification['type'], description, code)
+        # Step 2: Extract parameters (BEFORE retrieve for reranking)
+        print("\n[STEP 2] Extracting parameters...")
+        params = self.extract_params(code)
+        
+        if params:
+            for k, v in params.items():
+                if k.startswith('_'):
+                    if isinstance(v, dict) and v:
+                        print(f"   [{k[1:].upper()}] {len(v)} params detected")
+                    continue
+                if isinstance(v, int) and v > 1000000:
+                    print(f"   {k} = {v} ({v.bit_length()} bits)")
+                elif isinstance(v, (list, tuple)) and len(str(v)) > 100:
+                    print(f"   {k} = [{len(v)} items]")
+                else:
+                    print(f"   {k} = {v}")
+            det = params.get('_detected_type')
+            if det and det != 'Unknown':
+                print(f"   [EXTRACTOR] Detected type: {det}")
+        else:
+            print("   No parameters extracted")
+        
+        # Build query_params for reranking from RSA-specific fields
+        rerank_params = {}
+        for section_key in ['_rsa', '_aes', '_ecdsa', '_ecc']:
+            section = params.get(section_key, {})
+            if isinstance(section, dict):
+                rerank_params.update(section)
+        
+        # Step 3: Retrieve similar (with reranked FULL solutions)
+        print("\n[STEP 3] Retrieving similar challenges (reranked)...")
+        similar = self.retrieve(classification['type'], description, code, query_params=rerank_params)
         
         if similar:
             print(f"   Found {len(similar)} similar challenges:")
@@ -332,23 +437,18 @@ class AutoSolver:
         else:
             print("   No similar challenges found")
         
-        # Step 3: Extract parameters
-        print("\n[STEP 3] Extracting parameters...")
-        params = self.extract_params(code)
-        
-        if params:
-            for k, v in params.items():
-                if isinstance(v, int) and v > 1000000:
-                    print(f"   {k} = {v} ({v.bit_length()} bits)")
-                else:
-                    print(f"   {k} = {v}")
-        else:
-            print("   No parameters extracted")
         
         # Step 4: Solve
         print("\n[STEP 4] Attempting to solve...")
+        # Merge RSA-specific params from _rsa section into flat params
+        solve_params = dict(params)
+        rsa_section = params.get('_rsa', {})
+        if isinstance(rsa_section, dict):
+            for rk, rv in rsa_section.items():
+                if rk not in solve_params:
+                    solve_params[rk] = rv
         attack_hints = [s.get('attack', '') for s in similar if s.get('attack')] if similar else []
-        result = self.solve(classification['type'], params, attack_hints)
+        result = self.solve(classification['type'], solve_params, attack_hints)
         
         elapsed = time.time() - start_time
         
@@ -374,6 +474,15 @@ class AutoSolver:
                     print("[+] Experience stored for future learning")
                 except Exception as e:
                     print(f"[!] Could not store experience: {e}")
+            
+            # Mark helpful experiences (battle-tested scoring)
+            if self.retriever and similar:
+                for s in similar[:2]:
+                    if hasattr(self.retriever, 'increment_helpful'):
+                        try:
+                            self.retriever.increment_helpful(s.get('name', ''))
+                        except Exception:
+                            pass
         else:
             print("\n   Could not automatically solve.")
             print("   Suggestions:")
