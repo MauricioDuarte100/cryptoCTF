@@ -10,6 +10,7 @@ class ECCSolver:
     Supports:
     - BSGS (Baby-step Giant-step)
     - Pohlig-Hellman (smooth order)
+    - Multiplicative Pohlig-Hellman (oracle-based, smooth multiplicative group)
     - Invalid Curve Attack (ECDH)
     - Smart's Attack (anomalous curves)
     """
@@ -293,3 +294,129 @@ class ECCSolver:
         print("        n = E.lift_x(P[0]).log(E.lift_x(G[0]))")
         
         return None
+
+    # =========================================================================
+    # MULTIPLICATIVE POHLIG-HELLMAN (Oracle-based, smooth g_order)
+    # =========================================================================
+
+    def multiplicative_pohlig_hellman(
+        self,
+        G: Point,
+        p: int,
+        a: int,
+        g_order: int,
+        factors: List[Tuple[int, int]],
+        points: dict,
+        primitive_root: int = 2,
+    ) -> Optional[int]:
+        """
+        Multiplicative Pohlig-Hellman over an EC oracle.
+
+        Solves for FLAG where the oracle computes:
+            P = [FLAG^exp mod g_order] * G
+        and (g_order - 1) has small prime factors (is smooth).
+
+        The server sends point_mul(pow(FLAG, exp, g_order)) for a given exp.
+        By choosing exp = (g_order - 1) // q^k for each prime factor q,
+        we can recover FLAG mod q^e via BSGS in the multiplicative group
+        mapped to the EC.
+
+        Args:
+            G: Generator point (x, y) on the curve
+            p: Field prime for the elliptic curve
+            a: Curve parameter 'a' in y^2 = x^3 + ax + b
+            g_order: The multiplicative group order (modulus for FLAG^exp)
+            factors: Factorization of (g_order - 1) as [(prime, exponent), ...]
+            points: Dict mapping (q, k) -> (x, y) EC point returned by oracle
+                    for exp = (g_order - 1) // q^k
+            primitive_root: A primitive root modulo g_order (default 2)
+
+        Returns:
+            FLAG as an integer, or None if failed
+
+        Example usage:
+            solver = ECCSolver()
+            # Collect points from oracle for each factor of g_order - 1
+            points = {}
+            for q, e in factors:
+                for k in range(1, e + 1):
+                    exp = (g_order - 1) // (q ** k)
+                    points[(q, k)] = query_oracle(exp)  # returns (x, y)
+            flag = solver.multiplicative_pohlig_hellman(
+                G, curve_p, curve_a, g_order, factors, points
+            )
+        """
+        print(f"[*] Multiplicative Pohlig-Hellman over EC oracle")
+        print(f"    g_order = {g_order}")
+        print(f"    factors = {factors}")
+
+        T = g_order - 1
+        g = primitive_root
+        remainders = []
+        moduli = []
+
+        for q, e in factors:
+            x = 0
+            H = pow(g, T // q, g_order)
+
+            for k in range(1, e + 1):
+                key = (q, k)
+                if key not in points:
+                    print(f"    [-] Missing point for {key}, skipping")
+                    break
+
+                P_target = points[key]
+                scalar_prev = pow(g, x * T // (q ** k), g_order)
+                G_base = self._mul(scalar_prev, G, p, a)
+
+                m = int(math.isqrt(q)) + 1
+
+                # Baby steps: build lookup {point -> index}
+                lookup = {}
+                curr = G_base
+                for v in range(m):
+                    lookup[curr] = v
+                    curr = self._mul(H, curr, p, a)
+
+                # Giant steps: search for match
+                H_inv_m = pow(H, -m, g_order)
+                currP = P_target
+                found = False
+                for u in range(m):
+                    if currP in lookup:
+                        v = lookup[currP]
+                        x_new = u * m + v
+                        # Verify
+                        check_scalar = pow(H, x_new, g_order)
+                        if self._mul(check_scalar, G_base, p, a) == P_target:
+                            x += x_new * (q ** (k - 1))
+                            found = True
+                            break
+                    currP = self._mul(H_inv_m, currP, p, a)
+
+                if not found:
+                    print(f"    [-] FAILED for q={q}, k={k}")
+                    break
+
+            print(f"    x mod {q ** e} = {x}")
+            remainders.append(x)
+            moduli.append(q ** e)
+
+        # CRT to combine results
+        x_final = self._crt(remainders, moduli)
+        flag_val = pow(g, x_final, g_order)
+
+        print(f"[+] Recovered FLAG integer: {flag_val}")
+
+        # Try to decode as bytes
+        try:
+            h = hex(flag_val)[2:]
+            if len(h) % 2:
+                h = '0' + h
+            flag_str = bytes.fromhex(h).decode('utf-8', errors='ignore')
+            print(f"[+] FLAG string: {flag_str}")
+        except Exception:
+            pass
+
+        return flag_val
+
